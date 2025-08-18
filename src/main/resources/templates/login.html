@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Login</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="auth-page">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="brand">
+        <div class="brand-text">
+          <h1 class="brand-title">Sign in</h1>
+          <p class="brand-subtitle">Access your account</p>
+        </div>
+      </div>
+
+
+      <form id="loginForm" class="auth-form" autocomplete="on">
+        <div class="field">
+          <label class="field-label" for="email">E-mail</label>
+          <input
+            class="input"
+            type="email"
+            id="email"
+            placeholder="example@email.com"
+            required
+            autocomplete="email"
+          />
+          <button type="button" class="field-icon" id="togglePwd" aria-label="Show password">Show</button>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="password">Password</label>
+          <input
+            class="input"
+            type="password"
+            id="password"
+            placeholder="••••••••"
+            required
+            autocomplete="current-password"
+          />
+          <button type="button" class="field-icon" id="togglePwd" aria-label="Show password">Show</button>
+        </div>
+        
+      <div id="status" class="status"></div>
+
+        <button id="loginBtn" type="submit" class="btn btn-primary">Sign In</button>
+      </form>
+
+      <div class="auth-links">
+        <span class="muted">Don't have an account?</span>
+        <a class="link" href="/signup">Sign up</a>
+      </div>
+    </div>
+  </div>
+
+<script type="module">
+  import { setStatus, parseJwt, authApi, setLoading, validateEmail } from '/app.js';
+
+  const statusEl = document.getElementById('status');
+  const form = document.getElementById('loginForm');
+  const loginBtn = document.getElementById('loginBtn');
+  const pwd = document.getElementById('password');
+  const togglePwd = document.getElementById('togglePwd');
+
+  // Redirect if already logged in
+  function checkAuthStatus() {
+    const token = localStorage.getItem('jwt');
+    if (!token) return;
+    
+    try {
+      const d = parseJwt(token);
+      const rolesRaw = d.roles || d.authorities || [];
+      const roles = Array.isArray(rolesRaw) ? rolesRaw : String(rolesRaw || '').split(',');
+      
+      if (roles.includes('ROLES_ADMIN')) window.location.href = '/admin/dashboard';
+      else if (roles.includes('ROLES_USER')) window.location.href = '/user/dashboard';
+      else window.location.href = '/dashboard';
+    } catch {}
+  }
+
+  // Show/Hide password
+  function togglePasswordVisibility() {
+    const isPass = pwd.type === 'password';
+    pwd.type = isPass ? 'text' : 'password';
+    togglePwd.textContent = isPass ? 'Hide' : 'Show';
+    togglePwd.setAttribute('aria-label', isPass ? 'Hide password' : 'Show password');
+  }
+
+  // Handle login
+  async function handleLogin(e) {
+    e.preventDefault();
+    
+    const email = document.getElementById('email').value.trim();
+    const password = pwd.value;
+    
+    // Basic validation
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.isValid) {
+      setStatus(statusEl, emailValidation.details);
+      return;
+    }
+    
+    if (!password) {
+      setStatus(statusEl, 'Password is required');
+      return;
+    }
+    
+    setStatus(statusEl, '');
+    setLoading(loginBtn, true);
+
+    try {
+      const data = await authApi.login(email, password);
+      localStorage.setItem('jwt', data.token);
+      
+      setStatus(statusEl, 'Logged in successfully.', true);
+      
+      // Redirect based on role
+      setTimeout(() => {
+        const d = parseJwt(data.token);
+        const rolesRaw = d.roles || d.authorities || [];
+        const roles = Array.isArray(rolesRaw) ? rolesRaw : String(rolesRaw || '').split(',');
+        
+        if (roles.includes('ROLES_ADMIN')) window.location.href = '/admin/dashboard';
+        else if (roles.includes('ROLES_USER')) window.location.href = '/user/dashboard';
+        else window.location.href = '/dashboard';
+      }, 1000);
+      
+    } catch (error) {
+      setStatus(statusEl, error.message || 'Login failed');
+    } finally {
+      setLoading(loginBtn, false);
+    }
+  }
+
+  // Event listeners
+  togglePwd.addEventListener('click', togglePasswordVisibility);
+  form.addEventListener('submit', handleLogin);
+
+  // Check auth status on load
+  checkAuthStatus();
+</script>
+</body>
+</html>

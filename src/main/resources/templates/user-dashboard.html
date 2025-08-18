@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>User Dashboard</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="dashboard-page">
+  <div class="dashboard-header">
+    <h1>User Dashboard</h1>
+    <div class="dashboard-actions">
+      <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+    </div>
+  </div>
+
+  <div id="status" class="status"></div>
+
+  <div class="dashboard-content">
+    <div class="card">
+      <div class="card-header">
+        <h2>My Details</h2>
+      </div>
+      <div class="card-body">
+        <div id="myDetails" class="muted">Loading...</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>Update Profile</h2>
+      </div>
+      <div class="card-body">
+        <form id="updateForm" class="auth-form">
+          <div class="field">
+            <label class="field-label" for="name">Name</label>
+            <input
+              class="input"
+              type="text"
+              id="name"
+              placeholder="Your name"
+              autocomplete="name"
+            />
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="phone">Phone</label>
+            <input
+              class="input"
+              type="tel"
+              id="phone"
+              placeholder="+91 999 123 123 (555) 123-4567"
+              autocomplete="tel"
+            />
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="password">New Password</label>
+            <input
+              class="input"
+              type="password"
+              id="password"
+              placeholder="••••••••"
+              autocomplete="new-password"
+            />
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="passwordConfirm">Confirm New Password</label>
+            <input
+              class="input"
+              type="password"
+              id="passwordConfirm"
+              placeholder="••••••••"
+              autocomplete="new-password"
+            />
+            <span id="pwdHint" class="hint"></span>
+          </div>
+
+          <button id="updateBtn" type="submit" class="btn btn-primary">Update Profile</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card danger">
+      <div class="card-header">
+        <h2>No longer required</h2>
+      </div>
+      <div class="card-body">
+        <p class="muted">Once you delete your account, there is no going back.</p>
+        <button id="deleteAccountBtn" class="btn btn-danger">Delete My Account</button>
+      </div>
+    </div>
+  </div>
+
+<script type="module">
+  import {
+    authFetch,
+    setStatus,
+    requireRole,
+    logout,
+    escapeHtml,
+    safeJson,
+    userApi,
+    validatePassword,
+    setLoading,
+    showConfirm
+  } from '/app.js';
+
+  const statusEl = document.getElementById('status');
+  const pwd = document.getElementById('password');
+  const cpwd = document.getElementById('passwordConfirm');
+  const pwdHint = document.getElementById('pwdHint');
+  const updateForm = document.getElementById('updateForm');
+  let currentUser = { id: null, name: null, phone: null, email: null };
+
+  // Initialize
+  document.getElementById('logoutBtn').onclick = logout;
+
+  if (!requireRole('ROLES_USER')) { /* helper will redirect */ }
+
+  // Password validation
+  function validatePasswords() {
+    const password = pwd.value;
+    const confirmPassword = cpwd.value;
+    const validation = validatePassword(password, confirmPassword);
+    
+    if (validation.isValid) {
+      pwdHint.textContent = 'Passwords match';
+      pwdHint.className = 'ok';
+    } else {
+      pwdHint.textContent = validation.errors[0];
+      pwdHint.className = 'error';
+    }
+    
+    return validation.isValid;
+  }
+
+  // Show password hint
+  function showPwdHint() {
+    if (!pwd.value && !cpwd.value) {
+      pwdHint.textContent = '';
+      return;
+    }
+    validatePasswords();
+  }
+
+  // Load user details
+  async function loadMyDetails() {
+    try {
+      const me = await userApi.getCurrentUser();
+      currentUser = {
+        id: me.id,
+        email: me.email,
+        name: me.name || me.username || '',
+        phone: me.phone || ''
+      };
+      
+      document.getElementById('myDetails').innerHTML = `
+        <div class="user-details">
+          <div class="detail-row">
+            <span class="detail-label">Name:</span>
+            <span class="detail-value">${escapeHtml(currentUser.name)}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Email:</span>
+            <span class="detail-value">${escapeHtml(currentUser.email)}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Phone:</span>
+            <span class="detail-value">${escapeHtml(currentUser.phone)}</span>
+          </div>
+          <div class="detail-row muted">
+            <span class="detail-label">ID:</span>
+            <span class="detail-value">${escapeHtml(currentUser.id)}</span>
+          </div>
+        </div>`;
+
+      document.getElementById('name').value = currentUser.name || '';
+      document.getElementById('phone').value = currentUser.phone || '';
+    } catch {
+      document.getElementById('myDetails').textContent = 'Failed to load your details.';
+    }
+  }
+
+  // Handle profile update
+  async function handleUpdate(e) {
+    e.preventDefault();
+    
+    const payload = {};
+    const newName = document.getElementById('name').value.trim();
+    const newPhone = document.getElementById('phone').value.trim();
+    const newPassword = pwd.value;
+    const confirmPassword = cpwd.value;
+    
+    // Validate passwords if provided
+    if (newPassword) {
+      if (!validatePasswords()) {
+        return;
+      }
+    }
+
+    if (newName && newName !== currentUser.name) payload.name = newName;
+    if (newPhone && newPhone !== currentUser.phone) payload.phone = newPhone;
+    if (newPassword) payload.password = newPassword;
+    payload.email = currentUser.email;
+
+    if (Object.keys(payload).length <= 1) {
+      setStatus(statusEl, 'No changes provided.');
+      return;
+    }
+
+    try {
+      await userApi.updateUser(currentUser.id, payload);
+      alert('Profile updated successfully.');
+      // setStatus(statusEl, 'Profile updated successfully.', true);
+      pwd.value = '';
+      cpwd.value = '';
+      showPwdHint();
+      loadMyDetails();
+    } catch (error) {
+      setStatus(statusEl, error.message || 'Update failed');
+    }
+  }
+
+  // Handle account deletion
+  async function handleDeleteAccount() {
+    showConfirm(
+      'Are you sure you want to delete your account? This action cannot be undone.',
+      async () => {
+        try {
+          await userApi.deleteUser(currentUser.id);
+          alert('Account deleted successfully.');
+          logout();
+        } catch (error) {
+          setStatus(statusEl, 'Delete failed: ' + error.message);
+        }
+      }
+    );
+  }
+
+  // Event listeners
+  pwd.addEventListener('input', showPwdHint);
+  cpwd.addEventListener('input', showPwdHint);
+  updateForm.addEventListener('submit', handleUpdate);
+  document.getElementById('deleteAccountBtn').addEventListener('click', handleDeleteAccount);
+
+  // Boot
+  loadMyDetails();
+</script>
+</body>
+</html>

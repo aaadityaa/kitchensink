@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="/styles.css?v=7">
+  <style>
+    /* small helpers for inline edit + JSON viewer */
+    .actions button { margin-right: 6px; }
+    .cell-input { width: 100%; padding: 6px 8px; font-size: 13px; }
+    #jsonPanel { margin-top: 10px; border:1px solid #e5e7eb; border-radius:8px; background:#fafafa; }
+    #jsonPanelHeader { display:flex; align-items:center; gap:8px; padding:8px 10px; border-bottom:1px solid #e5e7eb; }
+    #jsonPanel pre { margin:0; padding:10px; max-height:260px; overflow:auto; font-size:12px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+  </style>
+</head>
+<body class="dashboard-page">
+<div class="dashboard-header">
+  <h1>Admin Dashboard</h1>
+  <div class="dashboard-actions">
+    <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+  </div>
+</div>
+
+<div id="status" class="status"></div>
+
+<div class="dashboard-content">
+  <!-- Admin details -->
+  <div class="card">
+    <div class="card-header">
+      <h2>My Details</h2>
+    </div>
+    <div class="card-body">
+      <div id="myDetails" class="muted">Loading...</div>
+    </div>
+  </div>
+
+  <!-- Create user -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Create New User</h2>
+    </div>
+    <div class="card-body">
+      <form id="createUserForm" class="auth-form">
+        <div class="field">
+          <label class="field-label" for="cu_username">Name</label>
+          <input
+                  class="input"
+                  type="text"
+                  id="cu_username"
+                  placeholder="Your name"
+                  autocomplete="name"
+          />
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="cu_email">Email</label>
+          <input
+                  class="input"
+                  type="email"
+                  id="cu_email"
+                  placeholder="example@email.com"
+                  autocomplete="email"
+          />
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="cu_phone">Phone</label>
+          <input
+                  class="input"
+                  type="tel"
+                  id="cu_phone"
+                  placeholder="+91 999 123 123 (555) 123-4567"
+                  autocomplete="tel"
+          />
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="cu_password">Password</label>
+          <input
+                  class="input"
+                  type="password"
+                  id="cu_password"
+                  placeholder="••••••••"
+                  autocomplete="new-password"
+          />
+        </div>
+
+        <button id="createUserBtn" type="submit" class="btn btn-primary">Create User</button>
+      </form>
+      <p class="muted small">Creates user via <code>/auth/register-user</code> (will show error if disabled).</p>
+    </div>
+  </div>
+
+  <!-- Search users -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Search Users</h2>
+    </div>
+    <div class="card-body">
+      <div class="search-controls">
+        <div class="field">
+          <label class="field-label" for="searchField">Search By</label>
+          <select id="searchField" class="input">
+            <option value="email" selected>Email</option>
+            <option value="name">Name</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="searchQuery">Search Query</label>
+          <input
+                  class="input"
+                  type="text"
+                  id="searchQuery"
+                  placeholder="Type to search…"
+          />
+        </div>
+
+        <div class="search-actions">
+          <button id="searchBtn" class="btn btn-primary">Search</button>
+          <button id="clearSearchBtn" class="btn btn-secondary">Clear</button>
+        </div>
+      </div>
+      <p class="muted small">Uses <code>/rest/members/search</code> (case-insensitive contains).</p>
+    </div>
+  </div>
+
+  <!-- Created Date Filter (NEW) -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Filter by Created Date</h2>
+    </div>
+    <div class="card-body">
+      <div class="search-controls">
+        <div class="field">
+          <label class="field-label" for="filterFrom">From</label>
+          <input class="input" type="date" id="filterFrom" />
+        </div>
+        <div class="field">
+          <label class="field-label" for="filterTo">To</label>
+          <input class="input" type="date" id="filterTo" />
+        </div>
+        <div class="search-actions">
+          <button id="applyFilterBtn" class="btn btn-primary">Apply</button>
+          <button id="clearFilterBtn" class="btn btn-secondary">Clear</button>
+        </div>
+      </div>
+      <p class="muted small">Uses <code>/rest/members/all?from=YYYY-MM-DD&amp;to=YYYY-MM-DD</code>.</p>
+    </div>
+  </div>
+
+  <!-- Paging controls -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Paging Controls</h2>
+    </div>
+    <div class="card-body">
+      <div class="paging-controls">
+        <div class="field">
+          <label class="field-label" for="pageSize">Page Size</label>
+          <select id="pageSize" class="input">
+            <option value="5">5</option>
+            <option value="10" selected>10</option>
+            <option value="20">20</option>
+          </select>
+        </div>
+        <button id="loadFirstBtn" class="btn btn-primary">Load Users</button>
+      </div>
+      <div id="pager" class="hidden">
+        <button id="prevBtn" class="btn btn-secondary">Prev</button>
+        <span id="pageInfo"></span>
+        <button id="nextBtn" class="btn btn-secondary">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- User table -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Users</h2>
+    </div>
+    <div class="card-body">
+      <div id="tableWrap"></div>
+    </div>
+  </div>
+
+  <!-- REST API info -->
+  <div class="card">
+    <div class="card-header">
+      <h2>API Information</h2>
+    </div>
+    <div class="card-body">
+      <div class="api-info">
+        <p class="muted">REST URL for all members:</p>
+        <code class="mono">/rest/members</code>
+        <button id="openAllBtn" class="btn btn-secondary" title="Fetch with JWT">Open</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Secure JSON viewer -->
+<div id="jsonPanel" class="modal">
+  <div class="modal-header">
+    <h3 id="jsonPanelTitle">Response</h3>
+    <button id="closeJsonBtn" class="btn btn-secondary">Close</button>
+  </div>
+  <div class="modal-body">
+    <pre id="jsonPre"></pre>
+  </div>
+</div>
+
+<script type="module">
+  import { authFetch, setStatus, requireRole, logout, escapeHtml, safeJson } from '/app.js';
+
+  const statusEl = document.getElementById('status');
+
+  // state
+  let currentAdmin = { id: null, email: null, name: null, phone: null };
+  const state = {
+    mode: 'all',       // 'all' | 'search'
+    field: 'email',    // email | name
+    query: '',
+    page: 0,
+    size: 10,
+    totalPages: 0,
+    from: '',          // NEW
+    to: ''             // NEW
+  };
+
+  // auth/nav
+  document.getElementById('logoutBtn').onclick = logout;
+  if (!requireRole('ROLES_ADMIN')) { /* helper redirects if not admin */ }
+
+  // JSON viewer
+  const jsonPanel = document.getElementById('jsonPanel');
+  const jsonPre = document.getElementById('jsonPre');
+  const jsonTitle = document.getElementById('jsonPanelTitle');
+  document.getElementById('closeJsonBtn').onclick = () => {
+    jsonPanel.classList.add('hidden');
+    jsonPre.textContent = '';
+  };
+  function showJson(title, obj) {
+    jsonTitle.textContent = title;
+    jsonPre.textContent = JSON.stringify(obj, null, 2);
+    jsonPanel.classList.remove('hidden');
+  }
+
+  // Admin details
+  async function loadMyDetails() {
+    try {
+      const res = await authFetch('/rest/members/me', { method: 'GET' });
+      const me = await res.json();
+      currentAdmin = {
+        id: me.id,
+        email: me.email,
+        name: me.name || me.username || '',
+        phone: me.phone || ''
+      };
+      document.getElementById('myDetails').innerHTML =
+        `<div><strong>Name:</strong> ${escapeHtml(currentAdmin.name)}</div>
+         <div><strong>Email:</strong> ${escapeHtml(currentAdmin.email)}</div>
+         <div><strong>Phone:</strong> ${escapeHtml(currentAdmin.phone)}</div>
+         <div class="muted">ID: ${escapeHtml(currentAdmin.id)}</div>`;
+    } catch {
+      document.getElementById('myDetails').textContent = 'Failed to load your details.';
+    }
+  }
+
+  // Create user
+  document.getElementById('createUserBtn').onclick = async () => {
+    const username = document.getElementById('cu_username').value.trim();
+    const email    = document.getElementById('cu_email').value.trim();
+    const phone    = document.getElementById('cu_phone').value.trim();
+    const password = document.getElementById('cu_password').value;
+
+    setStatus(statusEl, '');
+    if (!username || !email || !password) {
+      setStatus(statusEl, 'Username, email and password are required.');
+      return;
+    }
+    try {
+      const res = await fetch('/auth/register-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, email, phone, password })
+      });
+      if (!res.ok) {
+        const err = await safeJson(res);
+        if (res.status === 403) { setStatus(statusEl, 'Registration is disabled by the administrator.'); return; }
+        setStatus(statusEl, (err && (err.error || err.message)) || 'Failed to create user');
+        return;
+      }
+      setStatus(statusEl, 'User created successfully.', true);
+      document.getElementById('cu_username').value = '';
+      document.getElementById('cu_email').value    = '';
+      document.getElementById('cu_phone').value    = '';
+      document.getElementById('cu_password').value = '';
+      state.page = 0;
+      await (state.mode === 'all' ? loadAll(0) : loadSearch(0));
+    } catch {
+      setStatus(statusEl, 'Failed to create user');
+    }
+  };
+
+  // Search controls
+  document.getElementById('searchField').onchange = (e) => {
+    state.field = e.target.value === 'name' ? 'name' : 'email';
+  };
+  document.getElementById('searchBtn').onclick = async () => {
+    const q = document.getElementById('searchQuery').value.trim();
+    if (!q) { setStatus(statusEl, 'Enter a search term.'); return; }
+    setStatus(statusEl, '');
+    state.mode = 'search';
+    state.query = q;
+    state.page = 0;
+    await loadSearch(0);
+  };
+  document.getElementById('clearSearchBtn').onclick = async () => {
+    document.getElementById('searchQuery').value = '';
+    state.mode = 'all';
+    state.query = '';
+    state.page = 0;
+    await loadAll(0);
+  };
+
+  // Created Date Filter (NEW)
+  const filterFromEl = document.getElementById('filterFrom');
+  const filterToEl   = document.getElementById('filterTo');
+
+  function validateDates() {
+    const f = filterFromEl.value;
+    const t = filterToEl.value;
+    if (f && t) {
+      const fd = new Date(f + 'T00:00:00');
+      const td = new Date(t + 'T23:59:59');
+      if (fd.getTime() > td.getTime()) {
+        setStatus(statusEl, '“From” date must be on or before “To” date.');
+        return false;
+      }
+    }
+    setStatus(statusEl, '');
+    return true;
+  }
+
+  document.getElementById('applyFilterBtn').onclick = async () => {
+    if (!validateDates()) return;
+    state.from = filterFromEl.value || '';
+    state.to   = filterToEl.value || '';
+    state.page = 0;
+    await loadAll(0);
+  };
+
+  document.getElementById('clearFilterBtn').onclick = async () => {
+    filterFromEl.value = '';
+    filterToEl.value = '';
+    state.from = '';
+    state.to = '';
+    state.page = 0;
+    await loadAll(0);
+  };
+
+  // Paging
+  document.getElementById('loadFirstBtn').onclick = () => {
+    state.page = 0;
+    (state.mode === 'all' ? loadAll : loadSearch)(0);
+  };
+  document.getElementById('prevBtn').onclick = () => {
+    if (state.page > 0) (state.mode === 'all' ? loadAll : loadSearch)(state.page - 1);
+  };
+  document.getElementById('nextBtn').onclick = () => {
+    if (state.page + 1 < state.totalPages) (state.mode === 'all' ? loadAll : loadSearch)(state.page + 1);
+  };
+  document.getElementById('pageSize').onchange = () => {
+    state.size = parseInt(document.getElementById('pageSize').value, 10) || 10;
+    state.page = 0;
+    (state.mode === 'all' ? loadAll : loadSearch)(0);
+  };
+
+  // Loaders
+  async function loadAll(page) {
+    try {
+      const params = new URLSearchParams();
+      params.set('page', page);
+      params.set('size', state.size);
+      if (state.from) params.set('from', state.from);
+      if (state.to)   params.set('to', state.to);
+
+      const res = await authFetch(`/rest/members/all?${params.toString()}`);
+      const data = await res.json();
+      const users = Array.isArray(data.content) ? data.content : [];
+      state.page = (data.pageable && typeof data.pageable.pageNumber === 'number') ? data.pageable.pageNumber : page;
+      state.totalPages = typeof data.totalPages === 'number' ? data.totalPages : 1;
+      renderTable(users, { page: state.page, totalPages: state.totalPages, baseIndex: state.page * state.size });
+      updatePager();
+    } catch {
+      setStatus(statusEl, 'Failed to fetch users');
+    }
+  }
+
+  async function loadSearch(page) {
+    const params = new URLSearchParams();
+    if (state.field === 'email') params.set('email', state.query);
+    else params.set('name', state.query);
+    params.set('page', page);
+    params.set('size', state.size);
+
+    try {
+      const res = await authFetch(`/rest/members/search?${params.toString()}`);
+      if (!res.ok) {
+        const err = await safeJson(res);
+        setStatus(statusEl, (err && (err.error || err.message)) || 'Search failed');
+        return;
+      }
+      const data = await res.json();
+      const users = Array.isArray(data.content) ? data.content : [];
+      state.page = (data.pageable && typeof data.pageable.pageNumber === 'number') ? data.pageable.pageNumber : page;
+      state.totalPages = typeof data.totalPages === 'number' ? data.totalPages : 1;
+      renderTable(users, { page: state.page, totalPages: state.totalPages, baseIndex: state.page * state.size });
+      updatePager();
+      setStatus(statusEl, `Found ${data.totalElements ?? users.length} result(s).`, true);
+    } catch {
+      setStatus(statusEl, 'Search failed');
+    }
+  }
+
+  // Table with inline edit, reset password (NEW), and secure REST-view buttons
+  function renderTable(users, meta = {}) {
+    const wrap = document.getElementById('tableWrap');
+    if (!users || users.length === 0) {
+      wrap.innerHTML = '<p>No users found.</p>';
+      return;
+    }
+
+    let html = '<table><thead><tr>' +
+      '<th>#</th><th>Name</th><th>Email</th><th>Phone</th><th>REST URL</th><th>Actions</th>' +
+      '</tr></thead><tbody>';
+
+    const baseIndex = meta.baseIndex || 0;
+
+    for (let i = 0; i < users.length; i++) {
+      const u = users[i];
+      const rowNum = baseIndex + i; // 0,1,2,...
+      const id    = escapeHtml(u.id);
+      const name  = escapeHtml(u.name || u.username || '');
+      const email = escapeHtml(u.email || '');
+      const phone = escapeHtml(u.phone || '');
+      const restUrl = `/rest/members/${encodeURIComponent(u.id)}`;
+      const isSelf = currentAdmin.id && id === currentAdmin.id;
+
+      html += `<tr data-id="${id}" data-email="${email}">
+        <td class="mono">${rowNum}</td>
+        <td class="c-name">${name}</td>
+        <td class="c-email">${email}</td>
+        <td class="c-phone">${phone}</td>
+        <td class="c-rest mono">
+          <span>${escapeHtml(restUrl)}</span>
+          <button class="btn-open" data-url="${restUrl}" title="Fetch with JWT">Open</button>
+        </td>
+        <td class="actions">
+          <button class="btn-edit" data-id="${id}">Edit</button>
+          <button class="btn-save hidden" data-id="${id}">Save</button>
+          <button class="btn-cancel hidden" data-id="${id}">Cancel</button>
+          <button class="btn-reset" data-id="${id}">Reset Password</button>
+          <button class="btn-del" ${isSelf ? 'disabled title="You cannot delete your own account."' : ''} data-id="${id}">Delete</button>
+        </td>
+      </tr>`;
+    }
+    html += '</tbody></table>';
+
+    if (!meta.single && meta.totalPages > 1) {
+      html += `<div style="margin-top:8px;">Page ${meta.page + 1} of ${meta.totalPages}</div>`;
+    }
+
+    wrap.innerHTML = html;
+
+    // wire row buttons
+    wrap.querySelectorAll('.btn-open').forEach(b => {
+      b.onclick = () => openRest(b.getAttribute('data-url'));
+    });
+    wrap.querySelectorAll('.btn-edit').forEach(b => b.onclick = () => enterEdit(b.getAttribute('data-id')));
+    wrap.querySelectorAll('.btn-cancel').forEach(b => b.onclick = () => exitEdit());
+    wrap.querySelectorAll('.btn-save').forEach(b => b.onclick = () => saveEdit(b.getAttribute('data-id')));
+    wrap.querySelectorAll('.btn-reset').forEach(b => b.onclick = () => resetPassword(b.getAttribute('data-id'))); // NEW
+    wrap.querySelectorAll('.btn-del').forEach(b => b.onclick = () => deleteUser(b.getAttribute('data-id')));
+  }
+
+  async function openRest(url) {
+    try {
+      const res = await authFetch(url);
+      const data = await res.json();
+      showJson(url, data);
+    } catch {
+      setStatus(statusEl, 'Failed to fetch resource');
+    }
+  }
+
+  // inline edit
+  let editRowRef = null;
+
+  function enterEdit(id) {
+    // if another row is editing, cancel it by reloading current page
+    if (editRowRef) { exitEdit(); }
+
+    const row = document.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
+    if (!row) return;
+    editRowRef = row;
+
+    const nameTd  = row.querySelector('.c-name');
+    const phoneTd = row.querySelector('.c-phone');
+    const actions = row.querySelector('.actions');
+    const editBtn   = actions.querySelector('.btn-edit');
+    const saveBtn   = actions.querySelector('.btn-save');
+    const cancelBtn = actions.querySelector('.btn-cancel');
+
+    // Replace text with inputs
+    nameTd.dataset.orig = nameTd.textContent;
+    phoneTd.dataset.orig = phoneTd.textContent;
+    nameTd.innerHTML  = `<input class="cell-input" id="edit_name"  value="${nameTd.textContent}">`;
+    phoneTd.innerHTML = `<input class="cell-input" id="edit_phone" value="${phoneTd.textContent}">`;
+
+    // Show/Hide buttons
+    editBtn.classList.add('hidden');
+    saveBtn.classList.remove('hidden');
+    cancelBtn.classList.remove('hidden');
+  }
+
+  function exitEdit() {
+    if (!editRowRef) return;
+    const row = editRowRef;
+    const nameTd  = row.querySelector('.c-name');
+    const phoneTd = row.querySelector('.c-phone');
+    const actions = row.querySelector('.actions');
+    const editBtn   = actions.querySelector('.btn-edit');
+    const saveBtn   = actions.querySelector('.btn-save');
+    const cancelBtn = actions.querySelector('.btn-cancel');
+
+    // restore original text
+    if (nameTd.dataset.orig !== undefined)  nameTd.textContent  = nameTd.dataset.orig;
+    if (phoneTd.dataset.orig !== undefined) phoneTd.textContent = phoneTd.dataset.orig;
+
+    // toggle buttons back
+    editBtn.classList.remove('hidden');
+    saveBtn.classList.add('hidden');
+    cancelBtn.classList.add('hidden');
+
+    editRowRef = null;
+  }
+
+  async function saveEdit(id) {
+    const row = document.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
+    if (!row) return;
+    const email = row.getAttribute('data-email');
+    const name  = row.querySelector('#edit_name')?.value.trim() ?? '';
+    const phone = row.querySelector('#edit_phone')?.value.trim() ?? '';
+
+    const payload = { email };
+    const origName  = row.querySelector('.c-name').dataset.orig || '';
+    const origPhone = row.querySelector('.c-phone').dataset.orig || '';
+
+    if (name && name !== origName)  payload.name = name;
+    if (phone && phone !== origPhone) payload.phone = phone;
+
+    if (Object.keys(payload).length === 1) { // only email present
+      setStatus(statusEl, 'No changes provided.');
+      exitEdit();
+      return;
+    }
+
+    try {
+      const res = await authFetch(`/rest/members/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        const err = await safeJson(res);
+        setStatus(statusEl, (err && (err.error || err.message)) || 'Update failed');
+        return;
+      }
+      setStatus(statusEl, 'User updated successfully.', true);
+      // reload current view
+      (state.mode === 'all' ? loadAll : loadSearch)(state.page || 0);
+    } catch {
+      setStatus(statusEl, 'Update failed');
+    } finally {
+      editRowRef = null;
+    }
+  }
+
+  // Reset Password (NEW)
+  async function resetPassword(id) {
+    const pwd = prompt('Enter new password:');
+    if (pwd === null) return; // cancelled
+    if (!pwd.trim()) { setStatus(statusEl, 'Password cannot be empty.'); return; }
+    try {
+      const res = await authFetch(`/rest/members/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        body: JSON.stringify({ password: pwd.trim() })
+      });
+      if (!res.ok) {
+        const err = await safeJson(res);
+        setStatus(statusEl, (err && (err.error || err.message)) || 'Password reset failed');
+        return;
+      }
+      setStatus(statusEl, 'Password reset successfully.', true);
+    } catch {
+      setStatus(statusEl, 'Password reset failed');
+    }
+  }
+
+  async function deleteUser(id) {
+    if (currentAdmin.id && id === currentAdmin.id) { setStatus(statusEl, 'You cannot delete your own account.'); return; }
+    if (!confirm('Delete this user?')) return;
+    try {
+      const res = await authFetch(`/rest/members/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error();
+      setStatus(statusEl, 'User deleted successfully.', true);
+      (state.mode === 'all' ? loadAll : loadSearch)(state.page || 0);
+    } catch {
+      setStatus(statusEl, 'Delete failed');
+    }
+  }
+
+  // footer "Open" for all members (uses JWT so no 403)
+  document.getElementById('openAllBtn').onclick = async () => {
+    try {
+      const res = await authFetch('/rest/members');
+      const data = await res.json();
+      showJson('/rest/members', data);
+    } catch {
+      setStatus(statusEl, 'Failed to fetch /rest/members');
+    }
+  };
+
+  function updatePager() {
+    const pager = document.getElementById('pager');
+    pager.classList.toggle('hidden', state.totalPages <= 1);
+    document.getElementById('pageInfo').textContent = `Page ${state.page + 1} of ${state.totalPages}`;
+  }
+
+  // boot
+  loadMyDetails().then(() => loadAll(0));
+</script>
+</body>
+</html>

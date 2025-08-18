@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Member Registration</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="auth-page">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="brand">
+        <div class="brand-text">
+          <h1 class="brand-title">Sign up</h1>
+          <p class="brand-subtitle">Create your account</p>
+        </div>
+      </div>
+
+      <form id="signupForm" class="auth-form" autocomplete="on" novalidate>
+        <div class="field">
+          <label class="field-label" for="username">Name</label>
+          <input
+            class="input"
+            type="text"
+            id="username"
+            placeholder="Your name"
+            required
+            autocomplete="name"
+          />
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="email">E-mail</label>
+          <input
+            class="input"
+            type="email"
+            id="email"
+            placeholder="example@email.com"
+            required
+            autocomplete="email"
+          />
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="password">Password</label>
+          <input
+            class="input"
+            type="password"
+            id="password"
+            placeholder="••••••••"
+            required
+            autocomplete="new-password"
+          />
+          <button type="button" class="field-icon" id="togglePwd" aria-label="Show password">Show</button>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="confirmPassword">Confirm Password</label>
+          <input
+            class="input"
+            type="password"
+            id="confirmPassword"
+            placeholder="••••••••"
+            required
+            autocomplete="new-password"
+          />
+          <span id="pwdHint" class="hint"></span>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="phone">Phone</label>
+          <input
+            class="input"
+            type="tel"
+            id="phone"
+            placeholder="+91 999 123 123 (555) 123-4567"
+            autocomplete="tel"
+          />
+        </div>
+        
+        <div id="status" class="status"></div>
+
+        <button id="signupBtn" type="submit" class="btn btn-primary">Sign Up</button>
+      </form>
+
+      <div class="auth-links">
+        <span class="muted">Already have an account?</span>
+        <a class="link" href="/login">Sign in</a>
+      </div>
+    </div>
+  </div>
+
+<script type="module">
+  import { setStatus, authApi, validatePassword, validateEmail, setLoading } from '/app.js';
+
+  const statusEl = document.getElementById('status');
+  const form = document.getElementById('signupForm');
+  const signupBtn = document.getElementById('signupBtn');
+  const pwd = document.getElementById('password');
+  const cpwd = document.getElementById('confirmPassword');
+  const pwdHint = document.getElementById('pwdHint');
+
+  // Password validation
+  function validatePasswords() {
+    const password = pwd.value;
+    const confirmPassword = cpwd.value;
+    const validation = validatePassword(password, confirmPassword);
+    
+    if (validation.isValid) {
+      pwdHint.textContent = 'Passwords match';
+      pwdHint.className = 'ok';
+    } else {
+      pwdHint.textContent = validation.errors[0];
+      pwdHint.className = 'error';
+    }
+    
+    return validation.isValid;
+  }
+
+  // Show password hint
+  function showPwdHint() {
+    if (!pwd.value && !cpwd.value) {
+      pwdHint.textContent = '';
+      return;
+    }
+    validatePasswords();
+  }
+
+  // Handle signup
+  async function handleSignup(e) {
+    e.preventDefault();
+    
+    const username = document.getElementById('username').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const password = pwd.value;
+    const phone = document.getElementById('phone').value.trim();
+    
+    // Validate inputs
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.isValid) {
+      setStatus(statusEl, emailValidation.error);
+      return;
+    }
+    
+    if (!validatePasswords()) {
+      return;
+    }
+    
+    setStatus(statusEl, '');
+    setLoading(signupBtn, true);
+
+    try {
+      await authApi.register({ username, email, password, phone });
+      setStatus(statusEl, 'Registered successfully! Please check your email to verify your account.', true);
+      form.reset();
+      pwdHint.textContent = '';
+    } catch (error) {
+      setStatus(statusEl, error.message || 'Registration failed');
+    } finally {
+      setLoading(signupBtn, false);
+    }
+  }
+
+  // Event listeners
+  pwd.addEventListener('input', showPwdHint);
+  cpwd.addEventListener('input', showPwdHint);
+  form.addEventListener('submit', handleSignup);
+</script>
+</body>
+</html>
