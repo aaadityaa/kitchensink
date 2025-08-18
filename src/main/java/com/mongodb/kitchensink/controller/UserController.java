@@ -42,9 +42,9 @@ public class UserController {
     // -------- PUBLIC ENDPOINTS --------
 
     @GetMapping("/check")
-    public String healthCheck() {
+    public ResponseEntity<String> healthCheck() {
         log.info("Health check endpoint called");
-        return "API is working!";
+        return ResponseEntity.ok("API is working!");
     }
 
     // -------- PROTECTED ENDPOINTS --------
