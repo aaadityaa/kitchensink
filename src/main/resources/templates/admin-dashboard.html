@@ -44,49 +44,29 @@
       <form id="createUserForm" class="auth-form">
         <div class="field">
           <label class="field-label" for="cu_username">Name</label>
-          <input
-                  class="input"
-                  type="text"
-                  id="cu_username"
-                  placeholder="Your name"
-                  autocomplete="name"
-          />
+          <input class="input" type="text" id="cu_username" placeholder="Your name" autocomplete="name"/>
+          <div id="cu_usernameErr" class="hint error"></div>
         </div>
 
         <div class="field">
           <label class="field-label" for="cu_email">Email</label>
-          <input
-                  class="input"
-                  type="email"
-                  id="cu_email"
-                  placeholder="example@email.com"
-                  autocomplete="email"
-          />
+          <input class="input" type="email" id="cu_email" placeholder="example@email.com" autocomplete="email"/>
+          <div id="cu_emailErr" class="hint error"></div>
         </div>
 
         <div class="field">
           <label class="field-label" for="cu_phone">Phone</label>
-          <input
-                  class="input"
-                  type="tel"
-                  id="cu_phone"
-                  placeholder="9912341234"
-                  autocomplete="tel"
-          />
+          <input class="input" type="tel" id="cu_phone" placeholder="9912341234" autocomplete="tel"/>
+          <div id="cu_phoneErr" class="hint error"></div>
         </div>
 
         <div class="field">
           <label class="field-label" for="cu_password">Password</label>
-          <input
-                  class="input"
-                  type="password"
-                  id="cu_password"
-                  placeholder="••••••••"
-                  autocomplete="new-password"
-          />
+          <input class="input" type="password" id="cu_password" placeholder="••••••••" autocomplete="new-password"/>
+          <div id="cu_passwordErr" class="hint error"></div>
         </div>
 
-        <button id="createUserBtn" type="submit" class="btn btn-primary">Create User</button>
+        <button id="createUserBtn" type="button" class="btn btn-primary">Create User</button>
       </form>
     </div>
   </div>
@@ -192,8 +172,7 @@
 </div>
 
 <script type="module">
-  import { authFetch, setStatus, requireRole, logout, escapeHtml, safeJson } from '/app.js';
-
+  import { authFetch, setStatus, requireRole, logout, escapeHtml, safeJson, validateEmail, validateUsername, validateIndianPhone, validatePassword } from '/app.js';
   const statusEl = document.getElementById('status');
   function clearStatus() {
     try {
@@ -278,41 +257,81 @@
     }
   }
 
-  // Create user
-  document.getElementById('createUserBtn').onclick = async () => {
-    const username = document.getElementById('cu_username').value.trim();
-    const email    = document.getElementById('cu_email').value.trim();
-    const phone    = document.getElementById('cu_phone').value.trim();
-    const password = document.getElementById('cu_password').value;
+ // Create user with inline validation + API details mapping
+ document.getElementById('createUserBtn').onclick = async () => {
+   const usernameEl = document.getElementById('cu_username');
+   const emailEl    = document.getElementById('cu_email');
+   const phoneEl    = document.getElementById('cu_phone');
+   const pwdEl      = document.getElementById('cu_password');
 
-    setStatus(statusEl, '');
-    if (!username || !email || !password) {
-      setStatus(statusEl, 'Username, email and password are required.');
-      return;
-    }
-    try {
-      const res = await fetch('/auth/register-user', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, email, phone, password })
-      });
-      if (!res.ok) {
-        const err = await safeJson(res);
-        if (res.status === 403) { setStatus(statusEl, 'Registration is disabled by the administrator.'); return; }
-        setStatus(statusEl, (err && (err.error || err.message)) || 'Failed to create user');
-        return;
-      }
-      setStatus(statusEl, 'User created successfully.', true);
-      document.getElementById('cu_username').value = '';
-      document.getElementById('cu_email').value    = '';
-      document.getElementById('cu_phone').value    = '';
-      document.getElementById('cu_password').value = '';
-      state.page = 0;
-      await (state.mode === 'all' ? loadAll(0) : loadSearch(0));
-    } catch {
-      setStatus(statusEl, 'Failed to create user');
-    }
-  };
+   const errs = {
+     username: document.getElementById('cu_usernameErr'),
+     email:    document.getElementById('cu_emailErr'),
+     phone:    document.getElementById('cu_phoneErr'),
+     password: document.getElementById('cu_passwordErr')
+   };
+   const clearFieldErrors = () => Object.values(errs).forEach(e => e && (e.textContent = ''));
+   const setFieldError = (k, msg) => { if (errs[k]) errs[k].textContent = msg || ''; };
+
+   clearFieldErrors();
+   setStatus(statusEl, '');
+
+   const username = usernameEl.value.trim();
+   const email    = emailEl.value.trim();
+   const phone    = phoneEl.value.trim();
+   const password = pwdEl.value;
+
+   // Client-side validation
+   let hasError = false;
+   const u = validateUsername(username);
+   if (!u.isValid) { setFieldError('username', u.error); hasError = true; }
+
+   const e = validateEmail(email);
+   if (!e.isValid) { setFieldError('email', e.error); hasError = true; }
+
+   if (phone) {
+     const ph = validateIndianPhone(phone);
+     if (!ph.isValid) { setFieldError('phone', ph.error); hasError = true; }
+   }
+
+   const p = validatePassword(password, null);
+   if (!p.isValid) {
+     // show first password policy error
+     setFieldError('password', p.errors[0] || 'Invalid password');
+     hasError = true;
+   }
+   if (hasError) return;
+
+   // Submit
+   try {
+     const res = await fetch('/auth/register-user', {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify({ username, email, phone, password })
+     });
+     if (!res.ok) {
+       const err = await safeJson(res);
+       if (res.status === 403) { setStatus(statusEl, 'Registration is disabled by the administrator.'); return; }
+       // Map API field errors (err.details.{username,email,phone,password})
+       const details = (err && err.details) || {};
+       if (details.username) setFieldError('username', details.username);
+       if (details.email)    setFieldError('email',    details.email);
+       if (details.phone)    setFieldError('phone',    details.phone);
+       if (details.password) setFieldError('password', details.password);
+       setStatus(statusEl, (err && (err.error || err.message)) || 'Failed to create user');
+       return;
+     }
+     setStatusAndAutoHide('User created successfully.', true);
+     usernameEl.value = '';
+     emailEl.value = '';
+     phoneEl.value = '';
+     pwdEl.value = '';
+     state.page = 0;
+     await (state.mode === 'all' ? loadAll(0) : loadSearch(0));
+   } catch {
+     setStatus(statusEl, 'Failed to create user');
+   }
+ };
 
   // Search controls
   document.getElementById('searchField').onchange = (e) => {
