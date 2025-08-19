@@ -199,6 +199,9 @@
         setStatus(statusEl, msg, true);
         form.reset();
         pwdHint.textContent = '';
+        setTimeout(() => {
+        window.location.href = "/login";
+        }, 1000);
       } catch (error) {
         // Top-level status
         setStatus(statusEl, error.message || 'Registration failed');
