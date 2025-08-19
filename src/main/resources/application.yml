@@ -9,7 +9,7 @@ server:
   port: ${PORT:9092}
 
 jwt:
-  secret: ${JWT_SECRET:uN8L6nqFqVpO3X7Jz9KmL0N7vYTxIqI7FiP6v9QIsxk=}
+  secret: ${JWT_SECRET}
   expiration-ms: ${JWT_EXPIRATION_MS:1800000}
 
 app:
@@ -18,5 +18,5 @@ app:
     name: ${APP_BOOTSTRAP_ADMIN_NAME:John Smith}
     email: ${APP_BOOTSTRAP_ADMIN_EMAIL:john.smith@mailinator.com}
     phone: ${APP_BOOTSTRAP_ADMIN_PHONE:2125551212}
-    password: ${APP_BOOTSTRAP_ADMIN_PASSWORD:Welcome@123}
+    password: ${APP_BOOTSTRAP_ADMIN_PASSWORD}
     roles: ${APP_BOOTSTRAP_ADMIN_ROLES:ROLES_ADMIN}
