@@ -85,7 +85,7 @@ The app will start at:
 
 ---
 
-## ✅ Run Tests
+## Run Tests
 ```bash
 mvn test
 ```
