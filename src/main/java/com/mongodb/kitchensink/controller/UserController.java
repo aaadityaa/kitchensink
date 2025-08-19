@@ -13,7 +13,6 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -49,40 +48,13 @@ public class UserController {
 
     // -------- PROTECTED ENDPOINTS --------
 
-//    @GetMapping("/all")
-//    @SecurityRequirement(name = "bearerAuth")
-//    @Operation(summary = "Get paginated list of users", description = "Returns users in paginated format.")
-//    public ResponseEntity<?> getAllUsers(@PageableDefault(page = 0, size = 10) Pageable pageable, Authentication authentication) {
-//        log.info("Fetching users with pagination: page={}, size={}", pageable.getPageNumber(), pageable.getPageSize());
-//        validation.validateAdmin(authentication);
-//        return ResponseEntity.ok(service.getAll(pageable));
-//    }
-
     @GetMapping("/all")
     @SecurityRequirement(name = "bearerAuth")
-    public Page<?> getAllUsers(
-            @PageableDefault(page=0, size = 10) Pageable pageable,
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
-            Authentication authentication) {
-
-        ZoneId zone = ZoneId.of("Asia/Kolkata");
-        Instant fromInstant = null, toInstant = null;
-
-        if (from != null) {
-            fromInstant = from.atStartOfDay(zone).toInstant();
-        }
-        if (to != null) {
-            toInstant = to.plusDays(1).atStartOfDay(zone).toInstant().minusNanos(1);
-        }
-        if (fromInstant != null && toInstant != null && fromInstant.isAfter(toInstant)) {
-            throw new InvalidFieldException("from must be before to");
-        }
+    @Operation(summary = "Get paginated list of users", description = "Returns users in paginated format.")
+    public ResponseEntity<?> getAllUsers(@PageableDefault(page = 0, size = 10) Pageable pageable, Authentication authentication) {
         log.info("Fetching users with pagination: page={}, size={}", pageable.getPageNumber(), pageable.getPageSize());
         validation.validateAdmin(authentication);
-        return service.getAllFiltered(pageable, fromInstant, toInstant);
+        return ResponseEntity.ok(service.getAll(pageable));
     }
 
     @GetMapping
@@ -141,21 +113,34 @@ public class UserController {
     @SecurityRequirement(name = "bearerAuth")
     @Operation(
             summary = "Search users",
-            description = "Search by email and/or name (case-insensitive, contains). At least one parameter is required."
+            description = "Search by email and/or name (case-insensitive, contains). Optionally filter by created date range."
     )
     public ResponseEntity<?> searchUsers(
             @RequestParam(required = false) String email,
             @RequestParam(required = false, name = "name") String name,
-            @PageableDefault(page = 0, size = 10) Pageable pageable,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @PageableDefault(page=0, size=10) Pageable pageable,
             Authentication authentication) {
+
+        validation.validateAdmin(authentication);
 
         boolean noEmail = (email == null || email.isBlank());
         boolean noName  = (name  == null || name.isBlank());
-        if (noEmail && noName) {
-            throw new InvalidFieldException("At least one of 'email' or 'name' must be provided.");
+        boolean noDates = (from == null && to == null);
+        if (noEmail && noName && noDates) {
+            throw new InvalidFieldException("Provide email or name or a date range.");
         }
-        validation.validateAdmin(authentication);
-        return ResponseEntity.ok(service.search(email, name, pageable));
+
+        ZoneId zone = ZoneId.of("Asia/Kolkata");
+        Instant fi = (from != null) ? from.atStartOfDay(zone).toInstant() : null;
+        Instant ti = (to != null)   ? to.plusDays(1).atStartOfDay(zone).toInstant().minusNanos(1) : null;
+
+        if (fi != null && ti != null && fi.isAfter(ti)) {
+            throw new InvalidFieldException("from must be before to");
+        }
+
+        return ResponseEntity.ok(service.search(email, name, fi, ti, pageable));
     }
 
     @GetMapping("/by-email")

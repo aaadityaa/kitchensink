@@ -21,19 +21,22 @@ public class DataInitializer implements CommandLineRunner {
     private final UserInfoRepository repo;
     private final PasswordEncoder passwordEncoder;
 
-    @Value("${app.bootstrap-admin.name:Admin}")
+    @Value("${app.bootstrap-admin.enabled}")
+    private boolean enabled;
+
+    @Value("${app.bootstrap-admin.name}")
     private String name;
 
-    @Value("${app.bootstrap-admin.email:admin@example.com}")
+    @Value("${app.bootstrap-admin.email}")
     private String email;
 
-    @Value("${app.bootstrap-admin.phone:0000000000}")
+    @Value("${app.bootstrap-admin.phone}")
     private String phone;
 
-    @Value("${app.bootstrap-admin.password:ChangeMe123!}")
+    @Value("${app.bootstrap-admin.password}")
     private String password;
 
-    @Value("${app.bootstrap-admin.roles:ROLES_ADMIN}")
+    @Value("${app.bootstrap-admin.roles}")
     private String roles;
 
     public DataInitializer(UserInfoRepository repo, PasswordEncoder passwordEncoder) {
@@ -44,6 +47,10 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
+        if (!enabled) {
+            log.info("Bootstrap admin disabled. Skipping...");
+            return;
+        }
         final String e = normEmail(email);
         if (e == null) {
             log.warn("Bootstrap admin skipped: email is missing.");

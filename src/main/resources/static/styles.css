@@ -1,8 +1,3 @@
-/* ===== MAIN STYLESHEET ===== */
-/* Import all modular CSS files */
-
-/* Import base styles */
-/* ===== BASE STYLES ===== */
 :root {
   --color-primary: #3b82f6;
   --color-primary-hover: #2563eb;
@@ -15,26 +10,26 @@
   --color-background: #fff;
   --color-background-light: #f5f7fa;
   --color-background-field: #fafafa;
-  
+
   --spacing-xs: 4px;
   --spacing-sm: 8px;
   --spacing-md: 12px;
   --spacing-lg: 16px;
   --spacing-xl: 24px;
-  
+
   --border-radius-sm: 6px;
   --border-radius-md: 8px;
   --border-radius-lg: 14px;
-  
+
   --font-size-xs: 12px;
   --font-size-sm: 13px;
   --font-size-md: 14px;
   --font-size-lg: 16px;
   --font-size-xl: 22px;
-  
-  --shadow-sm: 0 2px 4px rgba(0,0,0,0.1);
-  --shadow-md: 0 4px 8px rgba(0,0,0,0.1);
-  --shadow-lg: 0 10px 28px rgba(0,0,0,0.07);
+
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 28px rgba(0, 0, 0, 0.07);
 }
 
 /* Reset and base styles */
@@ -97,7 +92,8 @@ h3 {
 }
 
 .mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", monospace;
   font-size: var(--font-size-xs);
 }
 
@@ -143,7 +139,8 @@ table {
   margin-top: var(--spacing-md);
 }
 
-th, td {
+th,
+td {
   border: 1px solid var(--color-border);
   padding: var(--spacing-sm);
   text-align: left;
@@ -220,6 +217,7 @@ input::-webkit-credentials-auto-fill-button {
   background: var(--color-background);
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  position: relative;
 }
 
 .input::placeholder {
@@ -233,8 +231,7 @@ input::-webkit-credentials-auto-fill-button {
 
 /* Button styles */
 .btn {
-  display: inline-block;
-  width: 100%;
+  width: auto; /* dashboard & tables look normal-sized */
   padding: var(--spacing-sm) var(--spacing-md);
   border: none;
   border-radius: var(--border-radius-md);
@@ -242,8 +239,10 @@ input::-webkit-credentials-auto-fill-button {
   font-size: var(--font-size-sm);
   cursor: pointer;
   transition: all 0.15s ease;
-  max-width: 400px;
 }
+
+ /* Keep full-width buttons only on auth forms (login/signup) */
+.auth-form .btn { width: 100%; }
 
 .btn-primary {
   background: var(--color-primary);
@@ -268,7 +267,7 @@ input::-webkit-credentials-auto-fill-button {
   position: absolute;
   right: var(--spacing-md);
   top: 50%;
-  transform: translateY(-50%);
+  /* transform: translateY(-50%); */
   background: none;
   border: none;
   cursor: pointer;
@@ -294,21 +293,23 @@ input::-webkit-credentials-auto-fill-button {
 
 /* Auth page layout */
 .auth-page {
-  min-height: 100vh;
+  height: 100vh;
   background: var(--color-background-light);
   margin: 0;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .auth-wrap {
-  min-height: 100vh;
   display: grid;
   place-items: center;
   padding: var(--spacing-md);
 }
 
 .auth-card {
-  width: 100%;
-  max-width: 420px;
+  width: 500px;
   background: var(--color-background);
   border: 1px solid var(--color-border-light);
   border-radius: var(--border-radius-lg);
@@ -348,7 +349,6 @@ input::-webkit-credentials-auto-fill-button {
   position: absolute;
   right: var(--spacing-md);
   top: 50%;
-  transform: translateY(-50%);
   background: none;
   border: none;
   cursor: pointer;
@@ -384,6 +384,19 @@ input::-webkit-credentials-auto-fill-button {
 
 /* Import dashboard styles */
 /* ===== DASHBOARD STYLES ===== */
+
+.dashboard-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.card {
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  padding: 10px;
+  box-shadow: 3px 5px #ddd;
+}
 
 /* Dashboard layout */
 .dashboard-header {
@@ -439,6 +452,12 @@ input::-webkit-credentials-auto-fill-button {
   font-size: var(--font-size-xs);
   min-width: auto;
   width: auto;
+}
+
+.api-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 /* Search and filter */
@@ -504,7 +523,16 @@ input::-webkit-credentials-auto-fill-button {
   padding: var(--spacing-md);
   max-height: 300px;
   overflow-y: auto;
-  font-family: var(--mono-font, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace);
+  font-family: var(
+    --mono-font,
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    "Liberation Mono",
+    monospace
+  );
   font-size: var(--font-size-xs);
   white-space: pre-wrap;
   word-wrap: break-word;
@@ -548,7 +576,7 @@ input::-webkit-credentials-auto-fill-button {
 }
 
 .loading::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
@@ -562,8 +590,12 @@ input::-webkit-credentials-auto-fill-button {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* ===== GLOBAL OVERRIDES AND CUSTOMIZATIONS ===== */
@@ -602,23 +634,63 @@ input::-webkit-credentials-auto-fill-button {
   font-size: var(--font-size-xs);
 }
 
+.user-details {
+  display: flex;
+  flex-wrap: nowrap;
+}
+
+.detail-row {
+  width: 50%;
+  margin-top: 10px;
+}
+
+.detail-label {
+  font-weight: bold;
+}
+
+.users-card .search-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.users-card .search-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.admin-dashboard .card-body {
+}
+
+.search-card .search-controls {
+  flex-direction: row;
+  margin-bottom: 20px;
+}
+.search-card .field {
+  width: 50%;
+}
+
+.pagesize-input {
+  margin-bottom: 20px;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .search-container {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .search-input {
     min-width: auto;
   }
-  
+
   .dashboard-header {
     flex-direction: column;
     gap: var(--spacing-md);
     align-items: stretch;
   }
-  
+
   .dashboard-actions {
     justify-content: center;
   }
@@ -628,15 +700,15 @@ input::-webkit-credentials-auto-fill-button {
   body {
     padding: var(--spacing-md);
   }
-  
+
   .auth-card {
     padding: var(--spacing-md);
   }
-  
+
   .table-container {
     overflow-x: scroll;
   }
-  
+
   .data-table {
     min-width: 600px;
   }

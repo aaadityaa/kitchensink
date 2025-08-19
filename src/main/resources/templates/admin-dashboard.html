@@ -70,7 +70,7 @@
                   class="input"
                   type="tel"
                   id="cu_phone"
-                  placeholder="+91 999 123 123 (555) 123-4567"
+                  placeholder="9912341234"
                   autocomplete="tel"
           />
         </div>
@@ -88,7 +88,6 @@
 
         <button id="createUserBtn" type="submit" class="btn btn-primary">Create User</button>
       </form>
-      <p class="muted small">Creates user via <code>/auth/register-user</code> (will show error if disabled).</p>
     </div>
   </div>
 
@@ -109,44 +108,25 @@
 
         <div class="field">
           <label class="field-label" for="searchQuery">Search Query</label>
-          <input
-                  class="input"
-                  type="text"
-                  id="searchQuery"
-                  placeholder="Type to search…"
-          />
+          <input class="input" type="text" id="searchQuery" placeholder="Type to search…"/>
         </div>
+
+
+               <!-- Moved here from the separate Filter card -->
+               <div class="field">
+                 <label class="field-label" for="filterFrom">From</label>
+                 <input class="input" type="date" id="filterFrom" />
+               </div>
+               <div class="field">
+                 <label class="field-label" for="filterTo">To</label>
+                 <input class="input" type="date" id="filterTo" />
+               </div>
 
         <div class="search-actions">
           <button id="searchBtn" class="btn btn-primary">Search</button>
           <button id="clearSearchBtn" class="btn btn-secondary">Clear</button>
         </div>
       </div>
-      <p class="muted small">Uses <code>/rest/members/search</code> (case-insensitive contains).</p>
-    </div>
-  </div>
-
-  <!-- Created Date Filter (NEW) -->
-  <div class="card">
-    <div class="card-header">
-      <h2>Filter by Created Date</h2>
-    </div>
-    <div class="card-body">
-      <div class="search-controls">
-        <div class="field">
-          <label class="field-label" for="filterFrom">From</label>
-          <input class="input" type="date" id="filterFrom" />
-        </div>
-        <div class="field">
-          <label class="field-label" for="filterTo">To</label>
-          <input class="input" type="date" id="filterTo" />
-        </div>
-        <div class="search-actions">
-          <button id="applyFilterBtn" class="btn btn-primary">Apply</button>
-          <button id="clearFilterBtn" class="btn btn-secondary">Clear</button>
-        </div>
-      </div>
-      <p class="muted small">Uses <code>/rest/members/all?from=YYYY-MM-DD&amp;to=YYYY-MM-DD</code>.</p>
     </div>
   </div>
 
@@ -191,17 +171,17 @@
       <h2>API Information</h2>
     </div>
     <div class="card-body">
-      <div class="api-info">
-        <p class="muted">REST URL for all members:</p>
-        <code class="mono">/rest/members</code>
-        <button id="openAllBtn" class="btn btn-secondary" title="Fetch with JWT">Open</button>
-      </div>
+           <div class="api-name">
+             <span class="muted">REST URL for all members:</span>
+             <code class="mono">/rest/members</code>
+             <button id="openAllBtn" class="btn btn-secondary" title="Fetch with JWT">Open</button>
+           </div>
     </div>
   </div>
 </div>
 
 <!-- Secure JSON viewer -->
-<div id="jsonPanel" class="modal">
+<div id="jsonPanel" class="modal hidden">
   <div class="modal-header">
     <h3 id="jsonPanelTitle">Response</h3>
     <button id="closeJsonBtn" class="btn btn-secondary">Close</button>
@@ -215,18 +195,34 @@
   import { authFetch, setStatus, requireRole, logout, escapeHtml, safeJson } from '/app.js';
 
   const statusEl = document.getElementById('status');
+  function clearStatus() {
+    try {
+      setStatus(statusEl, '');
+    } catch {
+      statusEl.textContent = '';
+      statusEl.className = 'status';
+    }
+  }
+
+  function setStatusAndAutoHide(msg, ok = false, ms = 3000) {
+    setStatus(statusEl, msg, ok); // taken from app.js
+    if (ok) {
+      window.clearTimeout(setStatusAndAutoHide._t);
+      setStatusAndAutoHide._t = window.setTimeout(clearStatus, ms);
+    }
+  }
 
   // state
   let currentAdmin = { id: null, email: null, name: null, phone: null };
   const state = {
-    mode: 'all',       // 'all' | 'search'
-    field: 'email',    // email | name
+    mode: 'all',
+    field: 'email',
     query: '',
     page: 0,
     size: 10,
     totalPages: 0,
-    from: '',          // NEW
-    to: ''             // NEW
+    from: '',
+    to: ''
   };
 
   // auth/nav
@@ -258,11 +254,25 @@
         name: me.name || me.username || '',
         phone: me.phone || ''
       };
-      document.getElementById('myDetails').innerHTML =
-        `<div><strong>Name:</strong> ${escapeHtml(currentAdmin.name)}</div>
-         <div><strong>Email:</strong> ${escapeHtml(currentAdmin.email)}</div>
-         <div><strong>Phone:</strong> ${escapeHtml(currentAdmin.phone)}</div>
-         <div class="muted">ID: ${escapeHtml(currentAdmin.id)}</div>`;
+      document.getElementById('myDetails').innerHTML = `
+        <div class="user-details">
+          <div class="detail-row">
+            <span class="detail-label">Name:</span>
+            <span class="detail-value">${escapeHtml(currentAdmin.name)}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Email:</span>
+            <span class="detail-value">${escapeHtml(currentAdmin.email)}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Phone:</span>
+            <span class="detail-value">${escapeHtml(currentAdmin.phone)}</span>
+          </div>
+          <div class="detail-row muted">
+            <span class="detail-label">ID:</span>
+            <span class="detail-value">${escapeHtml(currentAdmin.id)}</span>
+          </div>
+        </div>`;
     } catch {
       document.getElementById('myDetails').textContent = 'Failed to load your details.';
     }
@@ -310,51 +320,35 @@
   };
   document.getElementById('searchBtn').onclick = async () => {
     const q = document.getElementById('searchQuery').value.trim();
-    if (!q) { setStatus(statusEl, 'Enter a search term.'); return; }
-    setStatus(statusEl, '');
-    state.mode = 'search';
-    state.query = q;
-    state.page = 0;
-    await loadSearch(0);
-  };
-  document.getElementById('clearSearchBtn').onclick = async () => {
-    document.getElementById('searchQuery').value = '';
-    state.mode = 'all';
-    state.query = '';
-    state.page = 0;
-    await loadAll(0);
-  };
-
-  // Created Date Filter (NEW)
-  const filterFromEl = document.getElementById('filterFrom');
-  const filterToEl   = document.getElementById('filterTo');
-
-  function validateDates() {
-    const f = filterFromEl.value;
-    const t = filterToEl.value;
+    const f = document.getElementById('filterFrom').value || '';
+    const t = document.getElementById('filterTo').value || '';
     if (f && t) {
       const fd = new Date(f + 'T00:00:00');
       const td = new Date(t + 'T23:59:59');
       if (fd.getTime() > td.getTime()) {
         setStatus(statusEl, '“From” date must be on or before “To” date.');
-        return false;
+        return;
       }
     }
+    // Require at least one filter: text OR dates
+    if (!q && !f && !t) {
+      setStatus(statusEl, 'Enter a search term or a date range.');
+      return;
+    }
     setStatus(statusEl, '');
-    return true;
-  }
-
-  document.getElementById('applyFilterBtn').onclick = async () => {
-    if (!validateDates()) return;
-    state.from = filterFromEl.value || '';
-    state.to   = filterToEl.value || '';
+    state.mode = 'search';
+    state.query = q;
+    state.from = f;
+    state.to = t;
     state.page = 0;
-    await loadAll(0);
+    await loadSearch(0);
   };
-
-  document.getElementById('clearFilterBtn').onclick = async () => {
-    filterFromEl.value = '';
-    filterToEl.value = '';
+  document.getElementById('clearSearchBtn').onclick = async () => {
+    document.getElementById('searchQuery').value = '';
+    document.getElementById('filterFrom').value = '';
+    document.getElementById('filterTo').value = '';
+    state.mode = 'all';
+    state.query = '';
     state.from = '';
     state.to = '';
     state.page = 0;
@@ -375,7 +369,7 @@
   document.getElementById('pageSize').onchange = () => {
     state.size = parseInt(document.getElementById('pageSize').value, 10) || 10;
     state.page = 0;
-    (state.mode === 'all' ? loadAll : loadSearch)(0);
+    (state.mode === 'search' ? loadSearch : loadAll)(0);
   };
 
   // Loaders
@@ -401,10 +395,16 @@
 
   async function loadSearch(page) {
     const params = new URLSearchParams();
-    if (state.field === 'email') params.set('email', state.query);
-    else params.set('name', state.query);
+    if (state.query) {
+      if (state.field === 'email') params.set('email', state.query);
+      else                         params.set('name',  state.query);
+    }
+    if (state.from) params.set('from', state.from);
+    if (state.to)   params.set('to',   state.to);
     params.set('page', page);
     params.set('size', state.size);
+    if (state.from) params.set('from', state.from);
+    if (state.to)   params.set('to', state.to);
 
     try {
       const res = await authFetch(`/rest/members/search?${params.toString()}`);
@@ -419,7 +419,7 @@
       state.totalPages = typeof data.totalPages === 'number' ? data.totalPages : 1;
       renderTable(users, { page: state.page, totalPages: state.totalPages, baseIndex: state.page * state.size });
       updatePager();
-      setStatus(statusEl, `Found ${data.totalElements ?? users.length} result(s).`, true);
+      setStatusAndAutoHide(`Found ${data.totalElements ?? users.length} result(s).`, true);
     } catch {
       setStatus(statusEl, 'Search failed');
     }

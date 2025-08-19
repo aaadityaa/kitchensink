@@ -27,7 +27,7 @@ public interface UserInfoService {
 
     List<UserResponse> getAllUsers();
 
-    Page<UserResponse> search(String emailLike, String nameLike, Pageable pageable);
+    Page<UserResponse> search(String emailLike, String nameLike, Instant from, Instant to, Pageable pageable);
 
     Page<UserResponse> getAllFiltered(Pageable pageable, Instant from, Instant to);
 }

@@ -91,22 +91,18 @@ export async function safeJson(res) {
 
 // ===== FORM VALIDATION UTILITIES =====
 
-// Password validation
 export function validatePassword(password, confirmPassword = null) {
   const errors = [];
-  
-  if (!password || password.length < 6) {
-    errors.push('Password must be at least 6 characters long');
+  // Policy: ≥8 chars, 1 upper, 1 lower, 1 digit, 1 special
+  const policy = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+  if (!password || !policy.test(password)) {
+    errors.push('Password must be at least 8 characters, with 1 uppercase, 1 lowercase, 1 digit, and 1 special character');
   }
-  
-  if (confirmPassword && password !== confirmPassword) {
+  // Always compare when confirmPassword is provided (even empty string)
+  if (confirmPassword !== null && password !== confirmPassword) {
     errors.push('Passwords do not match');
   }
-  
-  return {
-    isValid: errors.length === 0,
-    errors
-  };
+  return { isValid: errors.length === 0, errors };
 }
 
 // Email validation
@@ -262,10 +258,12 @@ export async function apiCall(url, options = {}) {
       const error = await safeJson(response);
       throw new Error(error?.error || error?.message || `HTTP ${response.status}`);
     }
-    
-    return await response.json();
+    // Handle 204 and empty responses safely
+    if (response.status === 204) return null;
+    const text = await response.text();
+    return text ? JSON.parse(text) : null;
   } catch (error) {
-    console.error('API call failed:', error);
+        console.error('API call failed:', error);
     throw error;
   }
 }
@@ -331,8 +329,12 @@ export const authApi = {
     });
     
     if (!response.ok) {
-      const error = await safeJson(response);
-      throw new Error(error?.error || 'Invalid credentials');
+       const error = await safeJson(response);
+       // Force generic message for 400/401
+       if (response.status === 400 || response.status === 401) {
+         throw new Error('Incorrect email or password. Please check.');
+       }
+       throw new Error(error?.error || 'Login failed');
     }
     
     const data = await response.json();
@@ -352,11 +354,16 @@ export const authApi = {
     });
     
     if (!response.ok) {
-      const error = await safeJson(response);
-      if (response.status === 403) {
-        throw new Error('Registration is currently disabled by the administrator');
-      }
-      throw new Error(error?.error || 'Registration failed');
+            const error = await safeJson(response);
+            if (response.status === 403) {
+              const e = new Error('Registration is currently disabled by the administrator');
+              e.status = 403;
+              throw e;
+            }
+            const e = new Error(error?.error || 'Registration failed');
+            e.status = response.status;
+            e.details = error?.details || null;
+            throw e;
     }
     
     return await response.json();
@@ -399,3 +406,14 @@ export function generateId() {
 export function deepClone(obj) {
   return JSON.parse(JSON.stringify(obj));
 }
+
+export function validateUsername(username) {
+  const ok = /^[A-Za-z][A-Za-z _]{2,49}$/.test(String(username || '').trim());
+  return { isValid: ok, error: 'Username must start with a letter, allow letters/spaces/underscores, 3–50 chars' };
+}
+
+export function validateIndianPhone(phone) {
+  const ok = /^[6-9](?!0{9})\d{9}$/.test(String(phone || '').trim());
+  return { isValid: ok, error: 'Invalid Indian phone number. Start 6–9, 10 digits, not all zeros' };
+}
+

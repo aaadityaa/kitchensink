@@ -26,6 +26,7 @@
             required
             autocomplete="name"
           />
+          <div id="usernameErr" class="hint error"></div>
         </div>
 
         <div class="field">
@@ -38,6 +39,7 @@
             required
             autocomplete="email"
           />
+          <div id="emailErr" class="hint error"></div>
         </div>
 
         <div class="field">
@@ -50,6 +52,7 @@
             required
             autocomplete="new-password"
           />
+          <div id="passwordErr" class="hint error"></div>
           <button type="button" class="field-icon" id="togglePwd" aria-label="Show password">Show</button>
         </div>
 
@@ -63,6 +66,7 @@
             required
             autocomplete="new-password"
           />
+          <div id="confirmErr" class="hint error"></div>
           <span id="pwdHint" class="hint"></span>
         </div>
 
@@ -72,9 +76,10 @@
             class="input"
             type="tel"
             id="phone"
-            placeholder="+91 999 123 123 (555) 123-4567"
+            placeholder="9912341234"
             autocomplete="tel"
           />
+          <div id="phoneErr" class="hint error"></div>
         </div>
         
         <div id="status" class="status"></div>
@@ -89,81 +94,129 @@
     </div>
   </div>
 
-<script type="module">
-  import { setStatus, authApi, validatePassword, validateEmail, setLoading } from '/app.js';
+  <script type="module">
+    import {
+      setStatus, authApi, validatePassword, validateEmail,
+      setLoading, validateUsername, validateIndianPhone
+    } from '/app.js';
 
-  const statusEl = document.getElementById('status');
-  const form = document.getElementById('signupForm');
-  const signupBtn = document.getElementById('signupBtn');
-  const pwd = document.getElementById('password');
-  const cpwd = document.getElementById('confirmPassword');
-  const pwdHint = document.getElementById('pwdHint');
+    const statusEl = document.getElementById('status');
+    const form = document.getElementById('signupForm');
+    const signupBtn = document.getElementById('signupBtn');
 
-  // Password validation
-  function validatePasswords() {
-    const password = pwd.value;
-    const confirmPassword = cpwd.value;
-    const validation = validatePassword(password, confirmPassword);
-    
-    if (validation.isValid) {
-      pwdHint.textContent = 'Passwords match';
-      pwdHint.className = 'ok';
-    } else {
-      pwdHint.textContent = validation.errors[0];
-      pwdHint.className = 'error';
+    const usernameEl = document.getElementById('username');
+    const emailEl    = document.getElementById('email');
+    const pwd        = document.getElementById('password');
+    const cpwd       = document.getElementById('confirmPassword');
+    const phoneEl    = document.getElementById('phone');
+    const pwdHint    = document.getElementById('pwdHint');
+    const togglePwd  = document.getElementById('togglePwd');
+
+    // Inline error helpers
+    const errs = {
+      username: document.getElementById('usernameErr'),
+      email:    document.getElementById('emailErr'),
+      password: document.getElementById('passwordErr'),
+      confirm:  document.getElementById('confirmErr'),
+      phone:    document.getElementById('phoneErr')
+    };
+    function clearFieldErrors() {
+      Object.values(errs).forEach(el => el && (el.textContent = ''));
     }
-    
-    return validation.isValid;
-  }
-
-  // Show password hint
-  function showPwdHint() {
-    if (!pwd.value && !cpwd.value) {
-      pwdHint.textContent = '';
-      return;
+    function setFieldError(field, msg) {
+      if (errs[field]) errs[field].textContent = msg || '';
     }
-    validatePasswords();
-  }
 
-  // Handle signup
-  async function handleSignup(e) {
-    e.preventDefault();
-    
-    const username = document.getElementById('username').value.trim();
-    const email = document.getElementById('email').value.trim();
-    const password = pwd.value;
-    const phone = document.getElementById('phone').value.trim();
-    
-    // Validate inputs
-    const emailValidation = validateEmail(email);
-    if (!emailValidation.isValid) {
-      setStatus(statusEl, emailValidation.error);
-      return;
+    // Show/Hide password (was missing)
+    function togglePasswordVisibility() {
+      const isPass = pwd.type === 'password';
+      pwd.type = isPass ? 'text' : 'password';
+      togglePwd.textContent = isPass ? 'Hide' : 'Show';
+      togglePwd.setAttribute('aria-label', isPass ? 'Hide password' : 'Show password');
     }
-    
-    if (!validatePasswords()) {
-      return;
-    }
-    
-    setStatus(statusEl, '');
-    setLoading(signupBtn, true);
+    togglePwd.addEventListener('click', togglePasswordVisibility);
 
-    try {
-      await authApi.register({ username, email, password, phone });
-      setStatus(statusEl, 'Registered successfully! Please check your email to verify your account.', true);
-      form.reset();
-      pwdHint.textContent = '';
-    } catch (error) {
-      setStatus(statusEl, error.message || 'Registration failed');
-    } finally {
-      setLoading(signupBtn, false);
+    // Password hint
+    function validatePasswordsForHint() {
+      const { isValid, errors } = validatePassword(pwd.value, cpwd.value);
+      if (!pwd.value && !cpwd.value) {
+        pwdHint.textContent = '';
+      } else if (isValid) {
+        pwdHint.textContent = 'Passwords match';
+        pwdHint.className = 'ok';
+      } else {
+        // Show only first password-related hint here; per-field errors shown below
+        pwdHint.textContent = errors[0];
+        pwdHint.className = 'error';
+      }
     }
-  }
+    pwd.addEventListener('input', validatePasswordsForHint);
+    cpwd.addEventListener('input', validatePasswordsForHint);
 
-  // Event listeners
-  pwd.addEventListener('input', showPwdHint);
-  cpwd.addEventListener('input', showPwdHint);
-  form.addEventListener('submit', handleSignup);
-</script>
+    // Handle signup
+    async function handleSignup(e) {
+      e.preventDefault();
+      clearFieldErrors();
+      setStatus(statusEl, '');
+
+      const username = usernameEl.value.trim();
+      const email    = emailEl.value.trim();
+      const password = pwd.value;
+      const confirm  = cpwd.value;
+      const phone    = phoneEl.value.trim();
+
+      // Client-side validation (prevents hitting API with obvious issues)
+      let hasError = false;
+
+      const uVal = validateUsername(username);
+      if (!uVal.isValid) { setFieldError('username', uVal.error); hasError = true; }
+
+      const eVal = validateEmail(email);
+      if (!eVal.isValid) { setFieldError('email', eVal.error); hasError = true; }
+
+      const pVal = validatePassword(password, confirm);
+      if (!pVal.isValid) {
+        // Split errors between password and confirm messages if needed
+        pVal.errors.forEach(msg => {
+          if (msg.toLowerCase().includes('match')) setFieldError('confirm', msg);
+          else setFieldError('password', msg);
+        });
+        hasError = true;
+      }
+
+      if (phone) {
+        const phVal = validateIndianPhone(phone);
+        if (!phVal.isValid) { setFieldError('phone', phVal.error); hasError = true; }
+      }
+
+      if (hasError) return; // <-- stops API call when confirm is empty or invalid
+
+      setLoading(signupBtn, true);
+      try {
+        const data = await authApi.register({ username, email, password, phone });
+        // Use server message exactly as returned
+        const msg = data?.message || 'Registered successfully.';
+        setStatus(statusEl, msg, true);
+        form.reset();
+        pwdHint.textContent = '';
+      } catch (error) {
+        // Top-level status
+        setStatus(statusEl, error.message || 'Registration failed');
+
+        // Field-level API errors
+        const details = error?.details || {};
+        if (details.username) setFieldError('username', details.username);
+        if (details.email)    setFieldError('email',    details.email);
+        if (details.password) setFieldError('password', details.password);
+        if (details.phone)    setFieldError('phone',    details.phone);
+        // If API reports confirm-specific issues (rare), show here:
+        if (details.confirmPassword) setFieldError('confirm', details.confirmPassword);
+      } finally {
+        setLoading(signupBtn, false);
+      }
+    }
+
+    form.addEventListener('submit', handleSignup);
+  </script>
 </body>
 </html>

@@ -1,4 +1,3 @@
-
 package com.mongodb.kitchensink.service;
 
 import com.mongodb.kitchensink.dto.UserRequest;
@@ -29,22 +28,18 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class UserInfoServiceImplTest {
 
-    @Mock PasswordEncoder passwordEncoder;
-    @Mock UserInfoRepository userRepo;
-    @InjectMocks UserInfoServiceImpl service;
+    @Mock
+    PasswordEncoder passwordEncoder;
+    @Mock
+    UserInfoRepository userRepo;
+    @InjectMocks
+    UserInfoServiceImpl service;
 
     private UserInfo sample;
 
     @BeforeEach
     void init() {
-        sample = UserInfo.builder()
-                .id("id1")
-                .email("john@example.com")
-                .username("John")
-                .phone("9876543210")
-                .roles("ROLES_USER")
-                .password("enc")
-                .build();
+        sample = UserInfo.builder().id("id1").email("john@example.com").username("John").phone("9876543210").roles("ROLES_USER").password("enc").build();
     }
 
     @Test
@@ -76,10 +71,7 @@ class UserInfoServiceImplTest {
 
     @Test
     void getAllUsers_maps_entities_to_dto() {
-        when(userRepo.findAll()).thenReturn(List.of(
-                sample,
-                UserInfo.builder().id("id2").email("a@b.com").username("A").phone("111").build()
-        ));
+        when(userRepo.findAll()).thenReturn(List.of(sample, UserInfo.builder().id("id2").email("a@b.com").username("A").phone("111").build()));
         List<UserResponse> out = service.getAllUsers();
         assertEquals(2, out.size());
         assertEquals("id1", out.get(0).getId());
@@ -90,7 +82,7 @@ class UserInfoServiceImplTest {
     void getAll_returns_page_of_responses() {
         Page<UserInfo> page = new PageImpl<>(List.of(sample));
         when(userRepo.findAll(PageRequest.of(0, 5))).thenReturn(page);
-        Page<UserResponse> out = service.getAll(PageRequest.of(0,5));
+        Page<UserResponse> out = service.getAll(PageRequest.of(0, 5));
         assertEquals(1, out.getSize());
         assertEquals("id1", out.getContent().get(0).getId());
     }
@@ -120,27 +112,25 @@ class UserInfoServiceImplTest {
 
     @Test
     void getByEmailAndPhone_present_and_absent() {
-        when(userRepo.findByEmailAndPhone("john@example.com","9876543210")).thenReturn(Optional.of(sample));
-        UserResponse ok = service.getByEmailAndPhone("  JOHN@example.com ","(987) 654-3210");
+        when(userRepo.findByEmailAndPhone("john@example.com", "9876543210")).thenReturn(Optional.of(sample));
+        UserResponse ok = service.getByEmailAndPhone("  JOHN@example.com ", "(987) 654-3210");
         assertEquals("id1", ok.getId());
 
-        when(userRepo.findByEmailAndPhone("no@x.com","123")).thenReturn(Optional.empty());
-        assertThrows(UserNotFoundException.class, () -> service.getByEmailAndPhone("no@x.com","123"));
+        when(userRepo.findByEmailAndPhone("no@x.com", "123")).thenReturn(Optional.empty());
+        assertThrows(UserNotFoundException.class, () -> service.getByEmailAndPhone("no@x.com", "123"));
     }
 
     @Test
     void update_updates_fields_and_saves() {
-        when(userRepo.findByEmail("new@example.com")).thenReturn(Optional.of(sample));
+        when(userRepo.findById("id1")).thenReturn(Optional.of(sample));
         when(userRepo.save(any())).thenAnswer(a -> a.getArgument(0));
-
         UserUpdateRequest req = new UserUpdateRequest();
         req.setEmail("New@Example.com");
         req.setPhone("999-888-7777");
         req.setName("New Name");
-
         UserResponse res = service.update("id1", req);
         assertEquals("john@example.com", res.getEmail());
-        assertEquals("9998887777", res.getPhone()); // normalization removes non-digits
+        assertEquals("9998887777", res.getPhone());
         assertTrue(res.getName().startsWith("New"));
         verify(userRepo).save(any());
     }
@@ -162,20 +152,19 @@ class UserInfoServiceImplTest {
     void search_routes_to_correct_repo_calls() {
         Page<UserInfo> page = new PageImpl<>(List.of(sample));
         // both email & name
-        when(userRepo.findByEmailContainingIgnoreCaseAndUsernameContainingIgnoreCase(eq("john@example.com"), eq("John"), any()))
-                .thenReturn(page);
-        assertEquals(1, service.search("john@example.com","John", PageRequest.of(0,10)).getTotalElements());
+        when(userRepo.findByEmailContainingIgnoreCaseAndUsernameContainingIgnoreCase(eq("john@example.com"), eq("John"), any())).thenReturn(page);
+        assertEquals(1, service.search("john@example.com", "John", null, null, PageRequest.of(0, 10)).getTotalElements());
 
         // only email
         when(userRepo.findByEmailContainingIgnoreCase(eq("john@example.com"), any())).thenReturn(page);
-        assertEquals(1, service.search("john@example.com",null, PageRequest.of(0,10)).getTotalElements());
+        assertEquals(1, service.search("john@example.com", null, null, null, PageRequest.of(0, 10)).getTotalElements());
 
         // only name
         when(userRepo.findByUsernameContainingIgnoreCase(eq("John"), any())).thenReturn(page);
-        assertEquals(1, service.search(null,"John", PageRequest.of(0,10)).getTotalElements());
+        assertEquals(1, service.search(null, "John", null, null, PageRequest.of(0, 10)).getTotalElements());
 
         // neither -> findAll(pageable)
         when(userRepo.findAll(any(PageRequest.class))).thenReturn(page);
-        assertEquals(1, service.search(" "," ", PageRequest.of(0,10)).getTotalElements());
+        assertEquals(1, service.search(" ", " ", null, null, PageRequest.of(0, 10)).getTotalElements());
     }
 }

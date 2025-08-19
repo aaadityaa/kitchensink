@@ -1,4 +1,3 @@
-
 package com.mongodb.kitchensink.controller;
 
 import com.mongodb.kitchensink.dto.UserResponse;
@@ -10,9 +9,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 
+import java.time.Instant;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -22,16 +23,21 @@ import static org.mockito.Mockito.*;
 class UserControllerTest {
 
     @Test
-    void healthCheck_returns_string() {
-        UserController controller = new UserController(mock(UserInfoService.class), mock(UserValidation.class));
-        assertEquals("API is working!", controller.healthCheck());
+    void healthCheck_returns_ok_response_with_message() {
+        UserController controller = new UserController(
+                mock(UserInfoService.class),
+                mock(UserValidation.class)
+        );
+        ResponseEntity<String> response = controller.healthCheck();
+        assertEquals(200, response.getStatusCodeValue());
+        assertEquals("API is working!", response.getBody());
     }
 
     @Test
     void get_user_by_id_happy_path() {
         UserInfoService svc = mock(UserInfoService.class);
         UserValidation val = mock(UserValidation.class);
-        when(svc.getById("id1")).thenReturn(new UserResponse("id1","A","a@b.com","1"));
+        when(svc.getById("id1")).thenReturn(new UserResponse("id1", "A", "a@b.com", "1"));
         UserController c = new UserController(svc, val);
 
         Authentication auth = mock(Authentication.class);
@@ -50,7 +56,7 @@ class UserControllerTest {
 
         UserUpdateRequest req = new UserUpdateRequest();
         Authentication auth = mock(Authentication.class);
-        when(svc.update(eq("id1"), any(UserUpdateRequest.class))).thenReturn(new UserResponse("id1","A","e","p"));
+        when(svc.update(eq("id1"), any(UserUpdateRequest.class))).thenReturn(new UserResponse("id1", "A", "e", "p"));
 
         ResponseEntity<?> res = c.updateUser("id1", req, auth);
         assertEquals(200, res.getStatusCode().value());
@@ -77,7 +83,7 @@ class UserControllerTest {
         UserController c = new UserController(svc, val);
         Authentication auth = mock(Authentication.class);
         when(auth.getName()).thenReturn("user@example.com");
-        when(svc.getByEmail("user@example.com")).thenReturn(new UserResponse("id","U","user@example.com","p"));
+        when(svc.getByEmail("user@example.com")).thenReturn(new UserResponse("id", "U", "user@example.com", "p"));
 
         ResponseEntity<?> res = c.getCurrentUser(auth);
         assertEquals(200, res.getStatusCode().value());
@@ -91,8 +97,7 @@ class UserControllerTest {
         UserController c = new UserController(svc, val);
         Authentication auth = mock(Authentication.class);
 
-        assertThrows(InvalidFieldException.class, () ->
-                c.searchUsers(" "," ", PageRequest.of(0,10), auth));
+        assertThrows(InvalidFieldException.class, () -> c.searchUsers(" ", " ", null, null, PageRequest.of(0, 10), auth));
     }
 
     @Test
@@ -101,29 +106,29 @@ class UserControllerTest {
         UserValidation val = mock(UserValidation.class);
         UserController c = new UserController(svc, val);
         Authentication auth = mock(Authentication.class);
-        Page<UserResponse> page = new PageImpl<>(List.of(new UserResponse("id","A","e","p")));
-        when(svc.search(eq("a@b.com"), eq("Alice"), any())).thenReturn(page);
-
-        ResponseEntity<?> res = c.searchUsers("a@b.com", "Alice", PageRequest.of(0,10), auth);
+        Page<UserResponse> page = new PageImpl<>(List.of(new UserResponse("id", "A", "e", "p")));
+        when(svc.search(eq("a@b.com"), eq("Alice"), isNull(Instant.class), isNull(Instant.class), any(Pageable.class))).thenReturn(page);
+        ResponseEntity<?> res = c.searchUsers("a@b.com", "Alice", null, null, PageRequest.of(0, 10), auth);
         assertEquals(200, res.getStatusCode().value());
         verify(val).validateAdmin(auth);
+        verify(svc).search(eq("a@b.com"), eq("Alice"), isNull(Instant.class), isNull(Instant.class), any(Pageable.class));
     }
 
-//    @Test
-//    void getAll_and_getAllUsers_calls_validation_and_service() {
-//        UserInfoService svc = mock(UserInfoService.class);
-//        UserValidation val = mock(UserValidation.class);
-//        UserController c = new UserController(svc, val);
-//        Authentication auth = mock(Authentication.class);
-//
-//        when(svc.getAll(PageRequest.of(0,10))).thenReturn(new PageImpl<>(List.of(new UserResponse("id","n","e","p"))));
-//        ResponseEntity<?> p = c.getAllUsers(PageRequest.of(0,10),null,null, auth);
-//        assertEquals(200, p.getStatusCode().value());
-//        verify(val).validateAdmin(auth);
-//
-//        when(svc.getAllUsers()).thenReturn(List.of(new UserResponse("id","n","e","p")));
-//        ResponseEntity<?> all = c.getAllUsers(auth);
-//        assertEquals(200, all.getStatusCode().value());
-//        verify(val, times(2)).validateAdmin(auth);
-//    }
+    @Test
+    void getAll_and_getAllUsers_calls_validation_and_service() {
+        UserInfoService svc = mock(UserInfoService.class);
+        UserValidation val = mock(UserValidation.class);
+        UserController c = new UserController(svc, val);
+        Authentication auth = mock(Authentication.class);
+
+        when(svc.getAll(PageRequest.of(0, 10))).thenReturn(new PageImpl<>(List.of(new UserResponse("id", "n", "e", "p"))));
+        ResponseEntity<?> p = c.getAllUsers(PageRequest.of(0, 10), auth);
+        assertEquals(200, p.getStatusCode().value());
+        verify(val).validateAdmin(auth);
+
+        when(svc.getAllUsers()).thenReturn(List.of(new UserResponse("id", "n", "e", "p")));
+        ResponseEntity<?> all = c.getAllUsers(auth);
+        assertEquals(200, all.getStatusCode().value());
+        verify(val, times(2)).validateAdmin(auth);
+    }
 }

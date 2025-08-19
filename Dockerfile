@@ -2,7 +2,7 @@
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 COPY . .
-RUN mvn -DskipTests package     # <-- use mvn instead of ./mvnw
+RUN mvn -DskipTests package
 
 # ---- Run stage ----
 FROM eclipse-temurin:21-jre

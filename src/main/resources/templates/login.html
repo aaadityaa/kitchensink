@@ -10,8 +10,7 @@
     <div class="auth-card">
       <div class="brand">
         <div class="brand-text">
-          <h1 class="brand-title">Sign in</h1>
-          <p class="brand-subtitle">Access your account</p>
+          <h1 class="brand-title">Sign In</h1>
         </div>
       </div>
 
@@ -27,7 +26,6 @@
             required
             autocomplete="email"
           />
-          <button type="button" class="field-icon" id="togglePwd" aria-label="Show password">Show</button>
         </div>
 
         <div class="field">
@@ -77,7 +75,9 @@
       if (roles.includes('ROLES_ADMIN')) window.location.href = '/admin/dashboard';
       else if (roles.includes('ROLES_USER')) window.location.href = '/user/dashboard';
       else window.location.href = '/dashboard';
-    } catch {}
+    } catch (error) {
+        setStatus(statusEl, error.message || 'Login failed');
+    }
   }
 
   // Show/Hide password

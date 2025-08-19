@@ -1,4 +1,3 @@
-
 package com.mongodb.kitchensink.service;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -15,18 +14,18 @@ public class JwtServiceTest {
 
     private JwtService jwtService;
 
+    private static void setField(Object target, String name, Object value) throws Exception {
+        Field f = target.getClass().getDeclaredField(name);
+        f.setAccessible(true);
+        f.set(target, value);
+    }
+
     @BeforeEach
     void setUp() throws Exception {
         jwtService = new JwtService();
         // Set private fields via reflection (simulates @Value injection)
         setField(jwtService, "secret", "dGVzdGluZy1qd3Qtc2VjcmV0LXRlc3QxMjM0NTY3ODkwMTIzNDU2"); // base64
         setField(jwtService, "expMs", 3600_000L); // 1h
-    }
-
-    private static void setField(Object target, String name, Object value) throws Exception {
-        Field f = target.getClass().getDeclaredField(name);
-        f.setAccessible(true);
-        f.set(target, value);
     }
 
     @Test
