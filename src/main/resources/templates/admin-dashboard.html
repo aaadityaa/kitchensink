@@ -101,7 +101,21 @@
                  <label class="field-label" for="filterTo">To</label>
                  <input class="input" type="date" id="filterTo" />
                </div>
+        <div class="field">
+          <label class="field-label" for="sortField">Sort by</label>
+          <select id="sortField" class="input">
+            <option value="createdAt" selected>Created date</option>
+            <option value="email">Email</option>
+          </select>
+        </div>
 
+        <div class="field">
+          <label class="field-label" for="sortDir">Order</label>
+          <select id="sortDir" class="input">
+            <option value="desc" selected>Descending</option>
+            <option value="asc">Ascending</option>
+          </select>
+        </div>
         <div class="search-actions">
           <button id="searchBtn" class="btn btn-primary">Search</button>
           <button id="clearSearchBtn" class="btn btn-secondary">Clear</button>
@@ -401,7 +415,9 @@
         params.set('size', state.size);
         if (state.from) params.set('from', state.from);
         if (state.to)   params.set('to', state.to);
-
+        const sortField = document.getElementById('sortField')?.value || 'createdAt';
+        const sortDir   = document.getElementById('sortDir')?.value || 'desc';
+        params.set('sort', `${sortField},${sortDir}`);
         const res = await authFetch(`/rest/members/all?${params.toString()}`);
         const data = await res.json();
         const users = Array.isArray(data.content) ? data.content : [];
@@ -426,6 +442,10 @@
       params.set('size', state.size);
       if (state.from) params.set('from', state.from);
       if (state.to)   params.set('to', state.to);
+
+      const sortField = document.getElementById('sortField')?.value || 'createdAt';
+      const sortDir   = document.getElementById('sortDir')?.value || 'desc';
+      params.set('sort', `${sortField},${sortDir}`);
 
       try {
         const res = await authFetch(`/rest/members/search?${params.toString()}`);
@@ -662,6 +682,14 @@
 
     // boot
     loadMyDetails().then(() => loadAll(0));
+
+      ['sortField', 'sortDir'].forEach(id => {
+        document.getElementById(id)?.addEventListener('change', () => {
+          state.page = 0;
+          (state.mode === 'search' ? loadSearch : loadAll)(0);
+        });
+      });
+
 </script>
 </body>
 </html>

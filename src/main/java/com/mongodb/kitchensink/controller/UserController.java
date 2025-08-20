@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -51,7 +52,9 @@ public class UserController {
     @GetMapping("/all")
     @SecurityRequirement(name = "bearerAuth")
     @Operation(summary = "Get paginated list of users", description = "Returns users in paginated format.")
-    public ResponseEntity<?> getAllUsers(@PageableDefault(page = 0, size = 10) Pageable pageable, Authentication authentication) {
+    public ResponseEntity<?> getAllUsers(
+            @PageableDefault(page = 0, size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
+            Authentication authentication) {
         log.info("Fetching users with pagination: page={}, size={}", pageable.getPageNumber(), pageable.getPageSize());
         validation.validateAdmin(authentication);
         return ResponseEntity.ok(service.getAll(pageable));
@@ -120,7 +123,7 @@ public class UserController {
             @RequestParam(required = false, name = "name") String name,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
-            @PageableDefault(page=0, size=10) Pageable pageable,
+            @PageableDefault(page = 0, size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
             Authentication authentication) {
 
         validation.validateAdmin(authentication);
