@@ -136,22 +136,56 @@
     }
     togglePwd.addEventListener('click', togglePasswordVisibility);
 
-    // Password hint
-    function validatePasswordsForHint() {
-      const { isValid, errors } = validatePassword(pwd.value, cpwd.value);
-      if (!pwd.value && !cpwd.value) {
+    // Password hint — show errors only after blur; while typing show nothing (or a positive match)
+    let touchedPwd = false;
+    let touchedConfirm = false;
+
+    function showPwdHint(msg = '', ok = false) {
+      if (!msg) {
         pwdHint.textContent = '';
-      } else if (isValid) {
-        pwdHint.textContent = 'Passwords match';
-        pwdHint.className = 'ok';
+        pwdHint.className = '';
       } else {
-        // Show only first password-related hint here; per-field errors shown below
-        pwdHint.textContent = errors[0];
-        pwdHint.className = 'error';
+        pwdHint.textContent = msg;
+        pwdHint.className = ok ? 'ok' : 'error';
       }
     }
-    pwd.addEventListener('input', validatePasswordsForHint);
-    cpwd.addEventListener('input', validatePasswordsForHint);
+
+    function validatePasswordsForHint({ live = false } = {}) {
+      const password = pwd.value;
+      const confirm  = cpwd.value;
+
+      if (live) {
+        // While typing, don't show errors; only show positive "match" once both filled and equal
+        if (password && confirm && password === confirm) {
+          showPwdHint('Passwords match', true);
+        } else {
+          showPwdHint('');
+        }
+        return;
+      }
+
+      // On blur (touched), now we can show policy/mismatch errors if present
+      const { isValid, errors } = validatePassword(password, confirm);
+
+      // If neither field has been touched yet, or both are empty, show nothing
+      if ((!password && !confirm) || (!touchedPwd && !touchedConfirm)) {
+        showPwdHint('');
+        return;
+      }
+
+      if (isValid) {
+        showPwdHint('Passwords match', true);
+      } else {
+        showPwdHint(errors[0], false); // show only the first relevant error
+      }
+    }
+
+    // While typing: quiet (no errors), but show positive "match" if both equal
+    pwd.addEventListener('input',  () => validatePasswordsForHint({ live: true }));
+    cpwd.addEventListener('input', () => validatePasswordsForHint({ live: true }));
+    // On blur: mark touched and allow errors to show
+    pwd.addEventListener('blur',   () => { touchedPwd = true;     validatePasswordsForHint(); });
+    cpwd.addEventListener('blur',  () => { touchedConfirm = true; validatePasswordsForHint(); });
 
     // Handle signup
     async function handleSignup(e) {
@@ -200,7 +234,7 @@
         form.reset();
         pwdHint.textContent = '';
         setTimeout(() => {
-        window.location.href = "/login";
+          window.location.href = "/login";
         }, 1000);
       } catch (error) {
         // Top-level status
