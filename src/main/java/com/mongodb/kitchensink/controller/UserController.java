@@ -27,7 +27,12 @@ import java.time.ZoneId;
 
 @RestController
 @RequestMapping("/rest/members")
-@CrossOrigin(origins = "*")
+@CrossOrigin(
+        origins = "http://localhost:5173",
+        allowCredentials = "true",
+        allowedHeaders = {"*"},
+        methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.PATCH, RequestMethod.DELETE, RequestMethod.OPTIONS}
+)
 @Tag(name = "User Management", description = "APIs for creating, updating, fetching, and deleting users")
 @Slf4j
 public class UserController {
