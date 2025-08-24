@@ -9,6 +9,7 @@
   <div class="dashboard-header">
     <h1>User Dashboard</h1>
     <div class="dashboard-actions">
+      <button id="themeToggle" class="btn btn-ghost" type="button">Dark</button>
       <button id="logoutBtn" class="btn btn-secondary">Logout</button>
     </div>
   </div>
@@ -93,7 +94,7 @@
   </div>
 
 <script type="module">
-  import {
+  import { initTheme, attachThemeToggle,
     authFetch,
     setStatus,
     requireRole,
@@ -106,6 +107,8 @@
     showConfirm
   } from '/app.js';
 
+  initTheme();
+  attachThemeToggle('themeToggle');
   const statusEl = document.getElementById('status');
   const pwd = document.getElementById('password');
   const cpwd = document.getElementById('passwordConfirm');
@@ -205,7 +208,8 @@
     payload.email = currentUser.email;
 
     if (Object.keys(payload).length <= 1) {
-      setStatus(statusEl, 'No changes provided.');
+      alert('No changes provided.');
+      // setStatus(statusEl, 'No changes provided.');
       return;
     }
 
@@ -217,10 +221,22 @@
       cpwd.value = '';
       showPwdHint();
       loadMyDetails();
-    } catch (error) {
-      setStatus(statusEl, error.message || 'Update failed');
+      } catch (error) {
+        const d = (error && error.details) || {};
+        if (Object.keys(d).length) {
+          // Combine any field messages the server sent (name/phone/password/etc.)
+          const msgs = [];
+          for (const k of Object.keys(d)) {
+            if (d[k]) msgs.push(String(d[k]));
+          }
+          alert(msgs.join('\n'));
+          // setStatus(statusEl, msgs.join(' • '));
+        } else {
+          alert(error.message || 'Update failed'); // <-- fallback alert
+          // setStatus(statusEl, error.message || 'Update failed');
+        }
+      }
     }
-  }
 
   // Handle account deletion
   async function handleDeleteAccount() {

@@ -32,6 +32,56 @@
   --shadow-lg: 0 10px 28px rgba(0, 0, 0, 0.07);
 }
 
+:root[data-theme="dark"] {
+  --color-text: #f5f5f5;
+  --color-muted: #b5b5b5;
+  --color-border: #444;
+  --color-border-light: #555;
+  --color-background: #0b0b0b;         /* body bg */
+  --color-background-light: #101010;    /* panels / alt rows */
+  --color-background-field: #161616;    /* inputs / code blocks */
+}
+
+/* Use variables for page backgrounds instead of fixed colors */
+body {
+  background: var(--color-background);
+  color: var(--color-text);
+}
+
+/* Override the dashboard gradient so theme controls it */
+body.dashboard-page {
+  background: var(--color-background); /* replaces linear-gradient */
+}
+
+/* Ensure cards/inputs contrast nicely in both themes */
+.auth-card,
+.card {
+  background: var(--color-background-light);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.input {
+  background: var(--color-background-field);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+.input::placeholder { color: #8a8a8a; }
+
+/* Table + hover backgrounds via vars */
+.data-table th { background: var(--color-background-light); color: var(--color-text); }
+.data-table tr:hover { background: var(--color-background-field); }
+
+/* Optional: a subtle ghost/quiet button that looks good in both themes */
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+.btn-ghost:hover {
+  background: var(--color-background-field);
+}
+
 /* Reset and base styles */
 * {
   box-sizing: border-box;
@@ -242,7 +292,7 @@ input::-webkit-credentials-auto-fill-button {
 }
 
  /* Keep full-width buttons only on auth forms (login/signup) */
-.auth-form .btn { width: 100%; }
+.auth-form .btn { width: auto; }
 
 .btn-primary {
   background: var(--color-primary);
@@ -711,5 +761,385 @@ input::-webkit-credentials-auto-fill-button {
 
   .data-table {
     min-width: 600px;
+  } 
+}
+
+/* ============ Aesthetic Patch v1 (non-breaking) ============ */
+/* Works with your existing markup across admin/user/login/signup */
+
+/* Page + header */
+body.dashboard-page {
+  background: linear-gradient(180deg, #f7f8fb 0%, #ffffff 60%);
+}
+.dashboard-header h1 {
+  letter-spacing: .2px;
+}
+.dashboard-actions .btn { height: 38px; }
+
+/* Cards */
+.card {
+  border: 1px solid var(--color-border-light);
+  border-radius: 16px;
+  background: #fff;
+  padding: 0;                /* tighter chrome */
+  box-shadow: 0 6px 18px rgba(16,24,40,.06);
+}
+.card > .card-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-border-light);
+  background: var(--color-background);
+  border-radius: 16px 16px 0 0;
+}
+.card > .card-header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+}
+.card > .card-body {
+  padding: 14px 16px;
+}
+
+/* Inputs */
+.input {
+  height: 40px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border-color: var(--color-border);
+  background: #fff;
+  transition: box-shadow .15s, border-color .15s;
+}
+.input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(59,130,246,.18);
+}
+
+/* Buttons */
+.btn {
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+.btn-primary { background: var(--color-primary); color:#fff; width: fit-content; }
+.btn-primary:hover { background: var(--color-primary-hover); }
+.btn.btn-secondary {
+  background: #f8fafc;
+  color: #0f172a;
+  border-color: var(--color-border);
+}
+.btn.btn-secondary:hover { background: #eef2f6; }
+.btn:disabled { opacity: .6; cursor: not-allowed; }
+.auth-form .btn { height: 44px; width: fit-content; } /* keep auth full-width look */
+
+/* --- Admin dashboard: Search toolbar --- */
+.search-controls {
+  display: grid;
+  gap: 10px;
+  align-items: end;
+  /* Search By | Query | From | To | Sort | Order | Actions */
+  grid-template-columns: 160px 1fr 160px 160px 160px 140px auto;
+}
+.search-controls .field { min-width: 0; }
+.search-actions { display: flex; gap: 10px; }
+
+/* Adapt search layout on small screens */
+@media (max-width: 980px) {
+  .search-controls {
+    grid-template-columns: 1fr 1fr;
   }
+  .search-controls .field:nth-child(2) { grid-column: 1 / -1; } /* Query spans */
+}
+
+/* --- Admin dashboard: Paging controls --- */
+.paging-controls {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 220px auto;
+  align-items: end;
+  margin-bottom: 6px;
+}
+#pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+#pager .btn {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 18px;
+}
+#pageInfo { color: #475569; font-size: 14px; }
+
+/* --- Users table → cleaner, denser --- */
+#tableWrap table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+}
+#tableWrap thead th {
+  font-size: 13px;
+  letter-spacing: .02em;
+  color: #475569;
+  background: #f8fafc;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border-light);
+}
+#tableWrap tbody td {
+  font-size: 14px;
+  color: #0f172a;
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+#tableWrap tbody tr:hover { background: #fafcff; }
+#tableWrap .actions .btn {
+  height: 32px;
+  padding: 0 10px;
+  font-size: 13px;
+  border-radius: 8px;
+}
+#tableWrap .mono { font-variant-numeric: tabular-nums; }
+
+/* “Open (REST)” mini-button inside table */
+#tableWrap .btn-open {
+  height: 28px;
+  padding: 0 8px;
+  font-size: 12px;
+  border-radius: 7px;
+  background: #eef2f6;
+  border: 1px solid var(--color-border-light);
+}
+
+/* API info row */
+.api-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.api-name .mono {
+  padding: 2px 6px;
+  background: #f1f5f9;
+  border-radius: 6px;
+  border: 1px solid var(--color-border-light);
+}
+
+/* JSON viewer (inline card) */
+#jsonPanel {
+  margin-top: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border-light);
+  background: var(--color-background-field);
+  box-shadow: 0 8px 20px rgba(16,24,40,.08);
+}
+#jsonPanel .modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border-light);
+  background: var(--color-background);
+}
+#jsonPanel .modal-body pre {
+  margin: 0; padding: 12px; max-height: 320px; overflow: auto; font-size: 12px;
+}
+
+/* --- Auth pages (login/signup) polish --- */
+.auth-page { background: linear-gradient(180deg, #f7f8fb 0%, #ffffff 60%); }
+.auth-card {
+  border-radius: 20px;
+  border: 1px solid var(--color-border-light);
+  box-shadow: 0 18px 48px rgba(16,24,40,.08);
+}
+.brand-title { letter-spacing: .2px; }
+.field-icon { top: 70%; transform: translateY(-50%); } /* center the “Show/Hide” */
+
+/* Form hints and status */
+.hint { color: #64748b; }
+.status span.ok    { color: var(--color-success); }
+.status span.error { color: var(--color-error); }
+
+/* Danger card emphasis (user delete area) */
+.card.danger {
+  border-color: #fee2e2;
+  background: #fffafa;
+}
+.card.danger .muted { color: #ef4444; }
+.btn.btn-danger {
+  background: #ef4444; color: #fff; border-color: #ef4444;
+}
+.btn.btn-danger:hover { background: #b91c1c; }
+
+
+/* Page backgrounds (replaces gradient on dashboards) */
+:root[data-theme="dark"] body,
+:root[data-theme="dark"] body.dashboard-page,
+:root[data-theme="dark"] .auth-page {
+  background: var(--color-background);
+}
+
+/* Cards */
+:root[data-theme="dark"] .card,
+:root[data-theme="dark"] .auth-card {
+  background: var(--color-background-light);
+  border-color: var(--color-border);
+  color: var(--color-text);
+  box-shadow: none; /* optional: reduce glow on dark */
+}
+
+/* Card headers (your file set a light header bg + dark text later) */
+:root[data-theme="dark"] .card > .card-header {
+  background: var(--color-background-field);
+  border-bottom: 1px solid var(--color-border);
+}
+:root[data-theme="dark"] .card > .card-header h2 {
+  color: var(--color-text);
+}
+
+/* Inputs (later you set background:#fff; override for dark) */
+:root[data-theme="dark"] .input,
+:root[data-theme="dark"] .edit-input {
+  background: var(--color-background-field) !important;
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+:root[data-theme="dark"] .input::placeholder { color: #8a8a8a; }
+
+/* Secondary/ghost buttons that were light by default */
+:root[data-theme="dark"] .btn.btn-secondary,
+:root[data-theme="dark"] .btn-ghost {
+  background: #1f2937;
+  color: #e5e7eb;
+  border: 1px solid var(--color-border);
+}
+:root[data-theme="dark"] .btn.btn-secondary:hover,
+:root[data-theme="dark"] .btn-ghost:hover {
+  background: var(--color-background-field);
+}
+
+/* Tables (you have light colors hardcoded in the #tableWrap styles) */
+:root[data-theme="dark"] #tableWrap table {
+  background: var(--color-background-light);
+}
+:root[data-theme="dark"] #tableWrap thead th {
+  background: var(--color-background-field);
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-border-light);
+}
+:root[data-theme="dark"] #tableWrap tbody td {
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-border-light);
+}
+:root[data-theme="dark"] #tableWrap tbody tr:hover {
+  background: var(--color-background-field);
+}
+:root[data-theme="dark"] #tableWrap .btn-open {
+  background: var(--color-background-field);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+/* JSON panel + hints */
+:root[data-theme="dark"] #jsonPanel,
+:root[data-theme="dark"] .json-panel {
+  background: var(--color-background-field);
+  border-color: var(--color-border);
+}
+:root[data-theme="dark"] #jsonPanel .modal-header,
+:root[data-theme="dark"] .json-panel-header {
+  background: var(--color-background-light);
+  border-bottom: 1px solid var(--color-border);
+}
+:root[data-theme="dark"] .hint { color: var(--color-muted); }
+
+/* Danger card (keeps intent but fits dark bg) */
+:root[data-theme="dark"] .card.danger {
+  background: #1a0f0f;
+  border-color: #7f1d1d;
+}
+
+/* === Dark: API Info row polish ===================================== */
+:root[data-theme="dark"] .api-name .mono,
+:root[data-theme="dark"] code {
+  background: var(--color-background-field);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+/* Make the "Open" button readable on dark background */
+:root[data-theme="dark"] .btn.btn-secondary {
+  background: #273244;           /* subtle slate */
+  color: #e5e7eb;
+  border-color: var(--color-border);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.04) inset;
+}
+:root[data-theme="dark"] .btn.btn-secondary:hover {
+  background: #2f3b51;
+}
+
+/* Optional: focus rings look nicer on dark */
+:root[data-theme="dark"] .input:focus,
+:root[data-theme="dark"] .btn:focus-visible {
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.35);
+}
+
+/* === Table action buttons: match "Search" (both themes) ============== */
+#tableWrap .actions button {
+  height: 36px;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+#tableWrap .actions button:hover {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
+/* Keep Delete distinct + dangerous */
+#tableWrap .actions .btn-del {
+  background: #ef4444;
+  border-color: #ef4444;
+}
+#tableWrap .actions .btn-del:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+/* === Global background (light + dark), minimal + non-breaking === */
+/* Put the art behind everything, so cards keep their own backgrounds */
+html, body { background: transparent !important; }
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;          /* behind all content */
+  pointer-events: none; /* not clickable */
+  background: linear-gradient(135deg, #eaf1fb 0%, #ffffff 65%) no-repeat;
+  background-size: cover;
+  /* soft “glass” blobs */
+  mask-image: radial-gradient(80% 80% at 50% 30%, #000 70%, transparent 100%);
+  opacity: 1;
+}
+
+/* Dark theme variant */
+:root[data-theme="dark"] body::before {
+  background:
+    linear-gradient(135deg, #0f172a 0%, #111827 65%) no-repeat,
+    radial-gradient(40% 35% at 20% 15%, rgba(59,130,246,0.12), transparent 60%),
+    radial-gradient(45% 40% at 80% 25%, rgba(14,165,233,0.10), transparent 60%),
+    radial-gradient(50% 45% at 50% 80%, rgba(99,102,241,0.10), transparent 60%);
+  background-blend-mode: screen, normal;
+}
+
+/* Make sure page-specific rules don't override the global bg */
+body.dashboard-page,
+.auth-page {
+  background: transparent !important;
 }

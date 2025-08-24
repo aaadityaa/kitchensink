@@ -76,7 +76,19 @@
       else if (roles.includes('ROLES_USER')) window.location.href = '/user/dashboard';
       else window.location.href = '/dashboard';
     } catch (error) {
+      // Prefer field messages when provided
+      const details = (error && error.details) || {};
+      if (details.email || details.password) {
+        // Show whichever field(s) the server complained about
+        const msgs = [];
+        if (details.email)    msgs.push(String(details.email));
+        if (details.password) msgs.push(String(details.password));
+        setStatus(statusEl, msgs.join(' • '));
+      } else {
         setStatus(statusEl, error.message || 'Login failed');
+      }
+    } finally {
+      setLoading(loginBtn, false);
     }
   }
 
@@ -128,7 +140,17 @@
       }, 1000);
       
     } catch (error) {
-      setStatus(statusEl, error.message || 'Login failed');
+      // Prefer field messages when provided
+      const details = (error && error.details) || {};
+      if (details.email || details.password) {
+        // Show whichever field(s) the server complained about
+        const msgs = [];
+        if (details.email)    msgs.push(String(details.email));
+        if (details.password) msgs.push(String(details.password));
+        setStatus(statusEl, msgs.join(' • '));
+      } else {
+        setStatus(statusEl, error.message || 'Login failed');
+      }
     } finally {
       setLoading(loginBtn, false);
     }

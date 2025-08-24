@@ -18,7 +18,7 @@ public class UserUpdateRequest {
         private String name;
 
         @Pattern(
-                regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$",
+                regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&_])[A-Za-z\\d@$!%*?&]{8,}$",
                 message = "Password must be at least 8 characters long, with at least 1 uppercase, 1 lowercase, 1 digit, and 1 special character"
         )
         @Schema(description = "Secure password for the user", example = "P@ssw0rd123")

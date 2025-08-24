@@ -93,12 +93,9 @@ export async function safeJson(res) {
 
 export function validatePassword(password, confirmPassword = null) {
   const errors = [];
-  // Policy: ≥8 chars, 1 upper, 1 lower, 1 digit, 1 special
-  const policy = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
-  if (!password || !policy.test(password)) {
-    errors.push('Password must be at least 8 characters, with 1 uppercase, 1 lowercase, 1 digit, and 1 special character');
+  if (!password) {
+    errors.push('Password is required');
   }
-  // Always compare when confirmPassword is provided (even empty string)
   if (confirmPassword !== null && password !== confirmPassword) {
     errors.push('Passwords do not match');
   }
@@ -255,8 +252,14 @@ export async function apiCall(url, options = {}) {
     const response = await authFetch(url, options);
     
     if (!response.ok) {
-      const error = await safeJson(response);
-      throw new Error(error?.error || error?.message || `HTTP ${response.status}`);
+     // const error = await safeJson(response);
+      // throw new Error(error?.error || error?.message || `HTTP ${response.status}`);
+
+      const errorJson = await safeJson(response);
+      const e = new Error(errorJson?.error || errorJson?.message || `HTTP ${response.status}`);
+      e.status = response.status;
+      e.details = errorJson?.details || null;  // <-- pass structured field errors through
+      throw e;
     }
     // Handle 204 and empty responses safely
     if (response.status === 204) return null;
@@ -408,12 +411,52 @@ export function deepClone(obj) {
 }
 
 export function validateUsername(username) {
-  const ok = /^[A-Za-z][A-Za-z _]{2,49}$/.test(String(username || '').trim());
-  return { isValid: ok, error: 'Username must start with a letter, allow letters/spaces/underscores, 3–50 chars' };
+  const trimmed = String(username || '').trim();
+  const usernameRegex = /^[A-Za-z][A-Za-z _]{2,49}$/;
+
+  if (!trimmed) {
+    return { isValid: false, error: 'Username is required' };
+  }
+
+  return {
+    isValid: usernameRegex.test(trimmed),
+    error: 'Username must start with a letter, allow letters/spaces/underscores, 3–50 chars'
+  };
 }
 
 export function validateIndianPhone(phone) {
-  const ok = /^[6-9](?!0{9})\d{9}$/.test(String(phone || '').trim());
-  return { isValid: ok, error: 'Invalid Indian phone number. Start 6–9, 10 digits, not all zeros' };
+  const phoneRegex = /^[6-9](?!0{9})\d{9}$/;
+  const trimmed = String(phone || '').trim();
+
+  return {
+    isValid: phoneRegex.test(trimmed),
+    error: trimmed ? 'Invalid Indian phone number. Start 6–9, 10 digits, not all zeros' : 'Phone is required'
+  };
+}
+
+const THEME_KEY = 'theme';
+
+export function applyTheme(theme) {
+  const t = theme === 'dark' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', t);
+  localStorage.setItem(THEME_KEY, t);
+  // Update any toggle button text if present
+  const btn = document.getElementById('themeToggle');
+  if (btn) btn.textContent = t === 'dark' ? 'Light' : 'Dark';
+}
+
+export function initTheme() {
+  const saved = localStorage.getItem(THEME_KEY);
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme(saved || (prefersDark ? 'dark' : 'light'));
+}
+
+export function attachThemeToggle(buttonElOrId = 'themeToggle') {
+  const el = typeof buttonElOrId === 'string' ? document.getElementById(buttonElOrId) : buttonElOrId;
+  if (!el) return;
+  el.addEventListener('click', () => {
+    const current = document.documentElement.getAttribute('data-theme') || 'light';
+    applyTheme(current === 'dark' ? 'light' : 'dark');
+  });
 }
 

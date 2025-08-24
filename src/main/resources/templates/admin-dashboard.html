@@ -18,6 +18,7 @@
 <div class="dashboard-header">
   <h1>Admin Dashboard</h1>
   <div class="dashboard-actions">
+    <button id="themeToggle" class="btn btn-ghost" type="button">Dark</button>
     <button id="logoutBtn" class="btn btn-secondary">Logout</button>
   </div>
 </div>
@@ -124,6 +125,16 @@
     </div>
   </div>
 
+  <!-- User table -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Users</h2>
+    </div>
+    <div class="card-body">
+      <div id="tableWrap"></div>
+    </div>
+  </div>
+
   <!-- Paging controls -->
   <div class="card">
     <div class="card-header">
@@ -146,16 +157,6 @@
         <span id="pageInfo"></span>
         <button id="nextBtn" class="btn btn-secondary">Next</button>
       </div>
-    </div>
-  </div>
-
-  <!-- User table -->
-  <div class="card">
-    <div class="card-header">
-      <h2>Users</h2>
-    </div>
-    <div class="card-body">
-      <div id="tableWrap"></div>
     </div>
   </div>
 
@@ -186,13 +187,14 @@
 </div>
 
 <script type="module">
-  import { authFetch, requireRole, logout, escapeHtml, safeJson, validateEmail, validateUsername, validateIndianPhone, validatePassword } from '/app.js';
+  import { initTheme, attachThemeToggle, authFetch, setStatus, requireRole, logout, escapeHtml, safeJson, validateEmail, validateUsername, validateIndianPhone, validatePassword } from '/app.js';
 
     // Local override: show alerts instead of writing below dashboard
-    function setStatus(el, msg, ok = false) {
-      if (msg) alert(msg);
-    }
-
+   // function setStatus(el, msg, ok = false) {
+     // if (msg) alert(msg);
+    // }
+    initTheme();
+    attachThemeToggle('themeToggle');
     const statusEl = document.getElementById('status');
 
     function clearStatus() {
@@ -305,10 +307,9 @@
      const e = validateEmail(email);
      if (!e.isValid) { setFieldError('email', e.error); hasError = true; }
 
-     if (phone) {
-       const ph = validateIndianPhone(phone);
-       if (!ph.isValid) { setFieldError('phone', ph.error); hasError = true; }
-     }
+     const ph = validateIndianPhone(phone);
+     if (!ph.isValid) { setFieldError('phone', ph.error); hasError = true; }
+
 
      const p = validatePassword(password, null);
      if (!p.isValid) {
@@ -334,10 +335,18 @@
          if (details.email)    setFieldError('email',    details.email);
          if (details.phone)    setFieldError('phone',    details.phone);
          if (details.password) setFieldError('password', details.password);
-         setStatus(statusEl, (err && (err.error || err.message)) || 'Failed to create user');
+         // setStatus(statusEl, (err && (err.error || err.message)) || 'Failed to create user');
+         if (typeof details === 'string') {
+          alert(details);
+        } else if (Object.keys(details).length > 0) {
+          alert(Object.values(details).join('\n'));
+        } else {
+          alert(err?.error || err?.message || 'Failed to create user');
+        }
          return;
        }
-       setStatusAndAutoHide('User created successfully.', true);
+       alert('User created successfully.');
+       //setStatusAndAutoHide('User created successfully.', true);
        usernameEl.value = '';
        emailEl.value = '';
        phoneEl.value = '';
@@ -345,7 +354,9 @@
        state.page = 0;
        await (state.mode === 'all' ? loadAll(0) : loadSearch(0));
      } catch {
-       setStatus(statusEl, 'Failed to create user');
+            alert('Failed to create user.');
+
+       //setStatus(statusEl, 'Failed to create user');
      }
    };
 
@@ -361,13 +372,17 @@
         const fd = new Date(f + 'T00:00:00');
         const td = new Date(t + 'T23:59:59');
         if (fd.getTime() > td.getTime()) {
+                    alert('“From” date must be on or before “To” date.');
+
           setStatus(statusEl, '“From” date must be on or before “To” date.');
           return;
         }
       }
       // Require at least one filter: text OR dates
       if (!q && !f && !t) {
-        setStatus(statusEl, 'Enter a search term or a date range.');
+                          alert('Enter a search term or a date range.');
+
+        //setStatus(statusEl, 'Enter a search term or a date range.');
         return;
       }
       setStatus(statusEl, '');
@@ -426,7 +441,9 @@
         renderTable(users, { page: state.page, totalPages: state.totalPages, baseIndex: state.page * state.size });
         updatePager();
       } catch {
-        setStatus(statusEl, 'Failed to fetch users');
+                                alert('Failed to fetch users');
+
+        // setStatus(statusEl, 'Failed to fetch users');
       }
     }
 
@@ -590,44 +607,57 @@
     }
 
     async function saveEdit(id) {
-      const row = document.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
-      if (!row) return;
-      const email = row.getAttribute('data-email');
-      const name  = row.querySelector('#edit_name')?.value.trim() ?? '';
-      const phone = row.querySelector('#edit_phone')?.value.trim() ?? '';
+    const row = document.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
+    if (!row) return;
 
-      const payload = { email };
-      const origName  = row.querySelector('.c-name').dataset.orig || '';
-      const origPhone = row.querySelector('.c-phone').dataset.orig || '';
+    const email = row.getAttribute('data-email');
+    const name  = row.querySelector('#edit_name')?.value.trim() ?? '';
+    const phone = row.querySelector('#edit_phone')?.value.trim() ?? '';
 
-      if (name && name !== origName)  payload.name = name;
-      if (phone && phone !== origPhone) payload.phone = phone;
+    const payload   = { email };
+    const origName  = row.querySelector('.c-name').dataset.orig || '';
+    const origPhone = row.querySelector('.c-phone').dataset.orig || '';
 
-      if (Object.keys(payload).length === 1) { // only email present
-        setStatus(statusEl, 'No changes provided.');
-        exitEdit();
-        return;
-      }
+    if (name && name !== origName)    payload.name  = name;
+    if (phone && phone !== origPhone) payload.phone = phone;
 
-      try {
-        const res = await authFetch(`/rest/members/${encodeURIComponent(id)}`, {
-          method: 'PUT',
-          body: JSON.stringify(payload)
-        });
-        if (!res.ok) {
-          const err = await safeJson(res);
-          setStatus(statusEl, (err && (err.error || err.message)) || 'Update failed');
-          return;
-        }
-        setStatus(statusEl, 'User updated successfully.', true);
-        // reload current view
-        (state.mode === 'all' ? loadAll : loadSearch)(state.page || 0);
-      } catch {
-        setStatus(statusEl, 'Update failed');
-      } finally {
-        editRowRef = null;
-      }
+    if (Object.keys(payload).length === 1) { // only email present
+      alert('No changes provided.');
+      exitEdit();
+      return;
     }
+
+    try {
+      const res = await authFetch(`/rest/members/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const err = await safeJson(res);
+        const d = (err && err.details) || {};
+
+        if (d.name || d.phone) {
+          const msgs = [];
+          if (d.name)  msgs.push(String(d.name));
+          if (d.phone) msgs.push(String(d.phone));
+          alert(msgs.join('\n'));
+
+          // focus the first invalid field to help user fix it
+          if (d.name)  row.querySelector('#edit_name')?.focus();
+          else if (d.phone) row.querySelector('#edit_phone')?.focus();
+        } else {
+          alert((err && (err.error || err.message)) || 'Update failed');
+        }
+        return; // keep row in edit mode so they can correct values
+      }
+
+      alert('User updated successfully.');
+      (state.mode === 'all' ? loadAll : loadSearch)(state.page || 0);
+    } catch (e) {
+      alert('Update failed');
+    }
+  }
 
     // Reset Password (NEW)
     async function resetPassword(id) {
@@ -641,10 +671,14 @@
         });
         if (!res.ok) {
           const err = await safeJson(res);
-          setStatus(statusEl, (err && (err.error || err.message)) || 'Password reset failed');
+          const d = (err && err.details) || {};
+          if (d.password) alert(String(d.password));
+          else alert(err && (err.error || err.message) || 'Password reset failed');
           return;
         }
-        setStatus(statusEl, 'Password reset successfully.', true);
+               alert('Password reset successfully.');
+
+        // setStatus(statusEl, 'Password reset successfully.', true);
       } catch {
         setStatus(statusEl, 'Password reset failed');
       }

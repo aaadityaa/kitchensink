@@ -218,10 +218,9 @@
         hasError = true;
       }
 
-      if (phone) {
-        const phVal = validateIndianPhone(phone);
-        if (!phVal.isValid) { setFieldError('phone', phVal.error); hasError = true; }
-      }
+      const phVal = validateIndianPhone(phone);
+      if (!phVal.isValid) { setFieldError('phone', phVal.error); hasError = true; }
+
 
       if (hasError) return; // <-- stops API call when confirm is empty or invalid
 
@@ -241,13 +240,17 @@
         setStatus(statusEl, error.message || 'Registration failed');
 
         // Field-level API errors
-        const details = error?.details || {};
+        const details = (error && error.details) || {};
         if (details.username) setFieldError('username', details.username);
         if (details.email)    setFieldError('email',    details.email);
         if (details.password) setFieldError('password', details.password);
         if (details.phone)    setFieldError('phone',    details.phone);
-        // If API reports confirm-specific issues (rare), show here:
-        if (details.confirmPassword) setFieldError('confirm', details.confirmPassword);
+        // Some backends send confirm/confirmPassword:
+        if (details.confirm || details.confirmPassword) {
+          setFieldError('confirm', details.confirm || details.confirmPassword);
+        }
+
+        // If details were not provided, keep the generic message shown above.
       } finally {
         setLoading(signupBtn, false);
       }
